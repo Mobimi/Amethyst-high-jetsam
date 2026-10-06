@@ -301,7 +301,7 @@ static GameSurfaceView* pojavWindow;
         return;
     }
     // More 1024MB is necessary for other memory regions (native, Java GC, etc.)
-    int limit = getPrefInt(@"java.allocated_memory") + 1024;
+    int limit = getPrefInt(@"java.allocated_memory") + 1536;
     if (memorystatus_control(MEMORYSTATUS_CMD_SET_JETSAM_TASK_LIMIT, getpid(), limit, NULL, 0) == -1) {
         NSLog(@"Failed to set Jetsam task limit: error: %s", strerror(errno));
     } else {
