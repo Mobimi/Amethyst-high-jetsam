@@ -2,6 +2,8 @@
 #import "UIKit+hook.h"
 #import "utils.h"
 
+extern BOOL _UISolariumEnabled(void) __attribute__((weak_import));
+
 @interface PickViewController : UIViewController
 @property(nonatomic, assign) UITextField *textField;
 @end
