@@ -79,6 +79,25 @@ jobs:
           git commit -am "CI: Update gl4es"
           git push
 
+      - name: Install GNU Make
+        run: |
+          brew install make
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+          gmake --version
+
+      - name: Build for ${{ matrix.platform_name }}
+        run: |
+          export PATH=/opt/homebrew/bin:$PATH
+          export SLIMMED=1
+          if [ "${{ matrix.platform_name }}" == "ios" ]; then
+            gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=${{ matrix.platform }}
+            gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=${{ matrix.platform }} TROLLSTORE_JIT_ENT=1
+          elif [ "${{ matrix.platform_name }}" == "tvos" ]; then
+            gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=${{ matrix.platform }} TROLLSTORE_JIT_ENT=1
+          else
+            gmake -j$(sysctl -n hw.ncpu) dsym package PLATFORM=${{ matrix.platform }}
+          fi
+
       - name: Build for ${{ matrix.platform_name }}
         run: |
           export PATH=/opt/homebrew/bin:$PATH
