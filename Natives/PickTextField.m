@@ -2,7 +2,7 @@
 #import "UIKit+hook.h"
 #import "utils.h"
 
-extern BOOL _UISolariumEnabled(void) __attribute__((weak_import));
+#import <dlfcn.h>
 
 @interface PickViewController : UIViewController
 @property(nonatomic, assign) UITextField *textField;
@@ -53,7 +53,11 @@ extern BOOL _UISolariumEnabled(void) __attribute__((weak_import));
 }
 
 - (BOOL)prefersPopoverPresentation {
-    BOOL hasLiquidGlass = _UISolariumEnabled && _UISolariumEnabled();
+    BOOL hasLiquidGlass = NO;
+    BOOL (*UISolariumEnabled)(void) = (BOOL (*)(void))dlsym(RTLD_DEFAULT, "_UISolariumEnabled");
+    if (UISolariumEnabled) {
+        hasLiquidGlass = UISolariumEnabled();
+    }
     return hasLiquidGlass || NSProcessInfo.processInfo.isMacCatalystApp;
 }
 
