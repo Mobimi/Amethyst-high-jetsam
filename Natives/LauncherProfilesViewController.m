@@ -76,9 +76,6 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
             }]
     ]];
     self.createButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd menu:createMenu];
-    if ([self.createButtonItem respondsToSelector:@selector(sharesBackground)]) {
-        [(id)self.createButtonItem setSharesBackground:NO];
-    }
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
