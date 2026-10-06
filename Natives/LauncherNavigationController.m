@@ -18,6 +18,8 @@
 #import "ios_uikit_bridge.h"
 #import "utils.h"
 
+extern BOOL _UISolariumEnabled(void) __attribute__((weak_import));
+
 #import <objc/runtime.h>
 #include <sys/time.h>
 
