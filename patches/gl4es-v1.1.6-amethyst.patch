@@ -8002,18 +8002,15 @@ old mode 100755
 new mode 100644
 diff --git a/src/egl/egl.c b/src/egl/egl.c
 new file mode 100644
-index 00000000..e9ba7a72
+index 00000000..88857fd0
 --- /dev/null
 +++ b/src/egl/egl.c
-@@ -0,0 +1,263 @@
+@@ -0,0 +1,260 @@
 +
 +#include "egl.h"
++#include "../gl/attributes.h"
 +#include "../gl/loader.h"
 +#include "../glx/hardext.h"
-+
-+#ifndef AliasExport
-+#define AliasExport(name)   __attribute__((alias(name))) __attribute__((visibility("default")))
-+#endif
 +
 +static EGLint egl_context_attrib_es2[] = {
 +    EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -9738,10 +9735,10 @@ diff --git a/src/gl/array.h b/src/gl/array.h
 old mode 100755
 new mode 100644
 diff --git a/src/gl/attributes.h b/src/gl/attributes.h
-index cad4da90..b0487188 100755
+index cad4da90..9ed1ce62 100755
 --- a/src/gl/attributes.h
 +++ b/src/gl/attributes.h
-@@ -6,20 +6,171 @@
+@@ -6,20 +6,183 @@
     #define EXPORT
   #elif defined(STATICLIB)
     #define EXPORT
@@ -9755,10 +9752,6 @@ index cad4da90..b0487188 100755
   #endif
  #endif // EXPORT
  
--#ifndef AliasExport
-- #if defined(__EMSCRIPTEN__) || defined(__APPLE__)
--  #define AliasExport(name)
--//   EXPORT { __asm__("add sp, sp, #0x10 \n b _" name " \n ret"); }
 +#ifndef _STR
 + #define _STR(n) #n
 +#endif
@@ -9807,17 +9800,30 @@ index cad4da90..b0487188 100755
 +  #define AliasDecl(RET,NAME,DEF,OLD) \
 +      __pragma(comment(linker, "/ALTERNATENAME:" _STM(NAME,DEF) "=" _STM(OLD,DEF))) \
 +      RET APIENTRY_GL4ES NAME DEF
-  #else
--  #define AliasExport(name)   __attribute__((alias(name))) EXPORT
++ #else
 +  #define AliasDecl(RET,NAME,DEF,OLD) \
 +      RET APIENTRY_GL4ES NAME DEF
-  #endif
++ #endif
 +#endif // AliasDecl
 +
-+#ifndef AliasExport
+ #ifndef AliasExport
+- #if defined(__EMSCRIPTEN__) || defined(__APPLE__)
+-  #define AliasExport(name)
+-//   EXPORT { __asm__("add sp, sp, #0x10 \n b _" name " \n ret"); }
 + #if defined(__APPLE__)
-+  #define _AliasExport_(RET,ENM,DEF,INM,SUF) \
-+     __asm__(".globl _" _STR(ENM) "\n_" _STR(ENM) ":\n  b _gl4es_" _STR(INM));
++  #if defined(__arm64__) || defined(__aarch64__)
++   #define _AliasExport_(RET,ENM,DEF,INM,SUF) \
++      __asm__(".globl _" _STR(ENM) "\n.p2align 2\n_" _STR(ENM) ":\n  b _gl4es_" _STR(INM));
++  #elif defined(__arm__)
++   #define _AliasExport_(RET,ENM,DEF,INM,SUF) \
++      __asm__(".globl _" _STR(ENM) "\n.p2align 2\n_" _STR(ENM) ":\n  b _gl4es_" _STR(INM));
++  #elif defined(__x86_64__)
++   #define _AliasExport_(RET,ENM,DEF,INM,SUF) \
++      __asm__(".globl _" _STR(ENM) "\n.p2align 4\n_" _STR(ENM) ":\n  jmp _gl4es_" _STR(INM));
++  #else
++   #define _AliasExport_(RET,ENM,DEF,INM,SUF) \
++      __asm__(".globl _" _STR(ENM) "\n_" _STR(ENM) ":\n  b _gl4es_" _STR(INM));
++  #endif
 +  #define NonAliasExportDecl(RET,NAME,DEF) EXPORT \
 +     RET APIENTRY_GL4ES NAME DEF
 + #elif !defined(__EMSCRIPTEN__)
@@ -9852,6 +9858,8 @@ index cad4da90..b0487188 100755
 +   #define NonAliasExportDecl(RET,NAME,DEF) _EXP(NAME,_SUFF(DEF)) \
 +      RET APIENTRY_GL4ES NAME DEF
 +  #endif
++ #endif
++ #if defined(_AliasExport_)
 +  #define AliasExport(RET,NAME,X,DEF) \
 +      _AliasExport_(RET,NAME##X,DEF,NAME,_SUFF(DEF))
 +  #define AliasExport_A(RET,NAME,X,DEF,INM) \
@@ -9864,8 +9872,8 @@ index cad4da90..b0487188 100755
 +      _AliasExport_(RET,NAME##X,DEF,NAME,_STR(SUF))
 +  #define AliasExport_V(RET,NAME) \
 +      _AliasExport_(RET,NAME,(void),NAME,"0")
-+ #endif
-+ #ifndef _AliasExport_
+  #else
+-  #define AliasExport(name)   __attribute__((alias(name))) EXPORT
 +  #define AliasExport(RET,NAME,X,DEF)       RET NAME##X DEF
 +  #define AliasExport_A(RET,NAME,X,DEF,INM) AliasExport(RET,NAME,X,DEF)
 +  #define AliasExport_D(RET,NAME,X,DEF)     AliasExport(RET,NAME,X,DEF)
@@ -9873,7 +9881,7 @@ index cad4da90..b0487188 100755
 +  #define AliasExport_M(RET,NAME,X,DEF,SUF) AliasExport(RET,NAME,X,DEF)
 +  #define AliasExport_V(RET,NAME)           AliasExport(RET,NAME,,(void))
 +  #define NonAliasExportDecl(RET,NAME,DEF)  RET NAME DEF
-+ #endif
+  #endif
 + #define AliasExport_1(RET,NAME,X,DEF) AliasExport(RET,NAME,X,DEF)
  #endif // AliasExport
  
