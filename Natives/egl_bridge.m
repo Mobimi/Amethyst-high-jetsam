@@ -56,6 +56,10 @@ int pojavInitOpenGL() {
         renderer = @ RENDERER_NAME_GL4ES;
         setenv("RENDERER", renderer.UTF8String, 1);
         set_gl_bridge_tbl();
+    } else if ([renderer isEqualToString:@ RENDERER_NAME_GL4ES_116]) {
+        renderer = @ RENDERER_NAME_GL4ES_116;
+        setenv("RENDERER", renderer.UTF8String, 1);
+        set_gl_bridge_tbl();
     } else if ([renderer isEqualToString:@ RENDERER_NAME_MOBILEGLUES]) {
         renderer = @ RENDERER_NAME_MOBILEGLUES;
         setenv("RENDERER", renderer.UTF8String, 1);
@@ -68,7 +72,19 @@ int pojavInitOpenGL() {
     }
     JNI_LWJGL_changeRenderer(renderer.UTF8String);
     // Preload renderer library
-    dlopen([NSString stringWithFormat:@"@rpath/%@", renderer].UTF8String, RTLD_GLOBAL);
+    void *rendererHandle = dlopen([NSString stringWithFormat:@"@rpath/%@", renderer].UTF8String, RTLD_GLOBAL);
+    if ([renderer isEqualToString:@ RENDERER_NAME_GL4ES] || [renderer isEqualToString:@ RENDERER_NAME_GL4ES_116]) {
+        if (rendererHandle) {
+            const char* (*get_version_fn)(void) = (const char* (*)(void))dlsym(rendererHandle, "gl4es_GetVersion");
+            if (get_version_fn) {
+                NSLog(@"[Amethyst GL4ES] Successfully loaded %@ (GL4ES version: %s)", renderer, get_version_fn());
+            } else {
+                NSLog(@"[Amethyst GL4ES] Loaded legacy %@", renderer);
+            }
+        } else {
+            NSLog(@"[Amethyst GL4ES] WARNING: dlopen failed for %@: %s", renderer, dlerror());
+        }
+    }
 
     return !br_init();
     //return 0;

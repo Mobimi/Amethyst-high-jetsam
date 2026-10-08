@@ -169,6 +169,7 @@
 
 "preference.title.renderer.debug.auto" = "Tự động: gl4es hoặc ANGLE";
 "preference.title.renderer.debug.gl4es" = "gl4es 1.1.4 - xuất ra OpenGL 2.1";
+"preference.title.renderer.debug.gl4es_116" = "gl4es 1.1.6 (thử nghiệm) - xuất ra OpenGL 2.1";
 "preference.title.renderer.debug.angle" = "tinygl4angle (1.17+) - xuất ra OpenGL 3.2 (Core Profile, bị giới hạn)";
 "preference.title.renderer.debug.zink" = "Zink (Mesa 21.0) - xuất ra OpenGL 4.1";
 

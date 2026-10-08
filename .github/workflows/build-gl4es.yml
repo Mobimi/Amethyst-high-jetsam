@@ -1,0 +1,89 @@
+name: Build GL4ES v1.1.6 (iOS arm64)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'patches/gl4es-v1.1.6-amethyst.patch'
+      - '.github/workflows/build-gl4es.yml'
+
+jobs:
+  build-gl4es:
+    name: Build GL4ES for iOS arm64
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout Amethyst repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew install cmake ninja
+          
+      - name: Checkout Pojav gl4es base
+        uses: actions/checkout@v4
+        with:
+          repository: 'PojavLauncherTeam/gl4es-114-extra'
+          ref: 'master'
+          path: 'gl4es-src'
+
+      - name: Apply GL4ES v1.1.6 Amethyst Merge Patch
+        run: |
+          cd gl4es-src
+          git apply --binary --whitespace=nowarn ../patches/gl4es-v1.1.6-amethyst.patch
+          echo "GL4ES v1.1.6 patch successfully applied."
+
+      - name: Prepare iOS CMake toolchain
+        run: |
+          cd gl4es-src
+          if [ -f ../patches/ios.toolchain.cmake ]; then
+            cp -f ../patches/ios.toolchain.cmake ./ios.toolchain.cmake
+          else
+            curl -fsSL -o ios.toolchain.cmake https://raw.githubusercontent.com/leetal/ios-cmake/master/ios.toolchain.cmake
+          fi
+
+      - name: Configure CMake for iOS arm64
+        run: |
+          cd gl4es-src
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
+            -DPLATFORM=OS64 \
+            -DDEPLOYMENT_TARGET=14.0 \
+            -DDEFAULT_ES=2 \
+            -DNOX11=ON \
+            -DNOEGL=OFF \
+            -DSTATICLIB=OFF \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_FLAGS="-Wno-error=implicit-function-declaration -fvisibility=default"
+
+      - name: Compile libGL.dylib
+        run: |
+          cd gl4es-src
+          cmake --build build --config RelWithDebInfo --target GL -j$(sysctl -n hw.ncpu)
+
+      - name: Verify arm64 architecture and dependencies
+        run: |
+          echo "=== Locate built library ==="
+          BUILT_LIB=$(find gl4es-src -name "libGL.dylib" | head -n 1)
+          echo "Found: $BUILT_LIB"
+          echo "=== File details ==="
+          file "$BUILT_LIB"
+          echo "=== Mach-O headers ==="
+          otool -hv "$BUILT_LIB"
+          echo "=== Linked dylibs ==="
+          otool -L "$BUILT_LIB"
+          echo "=== Verify exported gl4es_GetVersion ==="
+          nm -gU "$BUILT_LIB" | grep gl4es_GetVersion || true
+
+      - name: Install binary to Amethyst Frameworks
+        run: |
+          BUILT_LIB=$(find gl4es-src -name "libGL.dylib" | head -n 1)
+          cp -f "$BUILT_LIB" Natives/resources/Frameworks/libgl4es_116.dylib
+          ls -lah Natives/resources/Frameworks/libgl4es_116.dylib
+
+      - name: Upload libgl4es_116.dylib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libgl4es_116.dylib
+          path: Natives/resources/Frameworks/libgl4es_116.dylib
+          if-no-files-found: error
