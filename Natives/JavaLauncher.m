@@ -127,7 +127,9 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
                     return 1;
                 }
             }
-            [NSFileManager.defaultManager copyItemAtPath:inBundleScriptPath toPath:[NSString stringWithFormat:@"%s/UniversalJIT26.js", getenv("AME_HOME")] error:nil];
+            NSString *destScriptPath = [NSString stringWithFormat:@"%s/UniversalJIT26.js", getenv("AME_HOME")];
+            [NSFileManager.defaultManager removeItemAtPath:destScriptPath error:nil];
+            [NSFileManager.defaultManager copyItemAtPath:inBundleScriptPath toPath:destScriptPath error:nil];
             showDialog(localize(@"Error", nil), @"Support for legacy script has been removed. Please switch to Universal JIT script. To import it, long-press on Amethyst when enabling JIT in StikDebug and tap \"Assign Script\", then go to Amethyst's Documents directory and pick it. (on sideloaded StikDebug, the builtin script is named Amethyst-MeloNX.js)");
             [PLLogOutputView handleExitCode:1];
             return 1;
