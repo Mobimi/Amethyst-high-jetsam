@@ -9738,10 +9738,10 @@ diff --git a/src/gl/array.h b/src/gl/array.h
 old mode 100755
 new mode 100644
 diff --git a/src/gl/attributes.h b/src/gl/attributes.h
-index cad4da90..8201906a 100755
+index cad4da90..b0487188 100755
 --- a/src/gl/attributes.h
 +++ b/src/gl/attributes.h
-@@ -6,20 +6,163 @@
+@@ -6,20 +6,171 @@
     #define EXPORT
   #elif defined(STATICLIB)
     #define EXPORT
@@ -9797,7 +9797,10 @@ index cad4da90..8201906a 100755
 +#endif
 +
 +#ifndef AliasDecl
-+ #ifdef __GNUC__
++ #if defined(__APPLE__)
++  #define AliasDecl(RET,NAME,DEF,OLD) \
++     __asm__(".globl _" _STR(NAME) "\n_" _STR(NAME) ":\n  b _" _STR(OLD));
++ #elif defined(__GNUC__)
 +  #define AliasDecl(RET,NAME,DEF,OLD) \
 +   RET APIENTRY_GL4ES NAME DEF __attribute__((alias(_STM(OLD,DEF))))
 + #elif defined(_MSC_VER)
@@ -9812,7 +9815,12 @@ index cad4da90..8201906a 100755
 +#endif // AliasDecl
 +
 +#ifndef AliasExport
-+ #if !defined(__EMSCRIPTEN__)
++ #if defined(__APPLE__)
++  #define _AliasExport_(RET,ENM,DEF,INM,SUF) \
++     __asm__(".globl _" _STR(ENM) "\n_" _STR(ENM) ":\n  b _gl4es_" _STR(INM));
++  #define NonAliasExportDecl(RET,NAME,DEF) EXPORT \
++     RET APIENTRY_GL4ES NAME DEF
++ #elif !defined(__EMSCRIPTEN__)
 +  #ifdef __GNUC__
 +   #define _AliasExport_(RET,ENM,DEF,INM,SUF) EXPORT \
 +      RET APIENTRY_GL4ES ENM DEF __attribute__((alias(_MNG(gl4es_##INM,SUF))))
