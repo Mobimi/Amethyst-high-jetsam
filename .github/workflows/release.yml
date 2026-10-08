@@ -63,13 +63,6 @@ jobs:
             git apply --binary --whitespace=nowarn ../patches/gl4es-v1.1.6-amethyst.patch
             echo "Applied GL4ES v1.1.6 patch successfully."
           fi
-          python3 -c "
-          with open('src/CMakeLists.txt', 'r') as f:
-              s = f.read()
-          s = s.replace('\"-framework MetalANGLE\"', '\"-F\${CMAKE_SOURCE_DIR}/../Natives/resources/Frameworks\"\n            \"-framework\" \"libEGL\"\n            \"-framework\" \"libGLESv2\"')
-          with open('src/CMakeLists.txt', 'w') as f:
-              f.write(s)
-          "
           if [ -f ../patches/ios.toolchain.cmake ]; then
             cp -f ../patches/ios.toolchain.cmake ./ios.toolchain.cmake
           else
