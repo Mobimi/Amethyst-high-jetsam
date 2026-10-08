@@ -347,6 +347,11 @@ payload: native dep_mg java jre assets
 	cp -R $(SOURCEDIR)/Natives/resources/en.lproj/LaunchScreen.storyboardc $(WORKINGDIR)/AngelAuraAmethyst.app/Base.lproj/ || exit 1
 	cp -R $(SOURCEDIR)/Natives/resources/* $(WORKINGDIR)/AngelAuraAmethyst.app/ || exit 1
 	cp $(WORKINGDIR)/*.dylib $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/ || exit 1
+	if [ -d "$(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/libGLESv2.framework" ] && [ ! -d "$(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/MetalANGLE.framework" ]; then \
+		mkdir -p $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/MetalANGLE.framework; \
+		ln -sf ../libGLESv2.framework/libGLESv2 $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/MetalANGLE.framework/MetalANGLE; \
+		ln -sf ../libGLESv2.framework/Info.plist $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/MetalANGLE.framework/Info.plist; \
+	fi
 	cp -R $(SOURCEDIR)/JavaApp/libs/others/* $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
 	cp $(SOURCEDIR)/JavaApp/build/*.jar $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
 	cp -R $(SOURCEDIR)/JavaApp/libs/caciocavallo/* $(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo || exit 1

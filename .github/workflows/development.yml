@@ -73,6 +73,8 @@ jobs:
             git apply --binary --whitespace=nowarn ../patches/gl4es-v1.1.6-amethyst.patch
             echo "Applied GL4ES v1.1.6 patch successfully."
           fi
+          sed -i '' 's/-framework MetalANGLE/-framework libEGL -framework libGLESv2/g' src/CMakeLists.txt
+          sed -i '' 's|"-F../../external"|"-F../../external"\n            "-F${CMAKE_SOURCE_DIR}/../Natives/resources/Frameworks"|g' src/CMakeLists.txt
           if [ -f ../patches/ios.toolchain.cmake ]; then
             cp -f ../patches/ios.toolchain.cmake ./ios.toolchain.cmake
           else
@@ -85,6 +87,11 @@ jobs:
             -DCMAKE_C_FLAGS="-Wno-error=implicit-function-declaration -fvisibility=default"
           cmake --build build --config RelWithDebInfo --target GL -j$(sysctl -n hw.ncpu)
           BUILT_LIB=$(find . -name "libGL.dylib" | head -n 1)
+          if otool -L "$BUILT_LIB" | grep -q "MetalANGLE"; then
+            install_name_tool -change @rpath/MetalANGLE.framework/MetalANGLE @rpath/libGLESv2.framework/libGLESv2 "$BUILT_LIB" || true
+          fi
+          echo "=== libGL.dylib dependencies ==="
+          otool -L "$BUILT_LIB"
           cp -f "$BUILT_LIB" ../Natives/resources/Frameworks/libgl4es_116.dylib
           ls -lah ../Natives/resources/Frameworks/libgl4es_116.dylib
 
