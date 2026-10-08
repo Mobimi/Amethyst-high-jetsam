@@ -68,7 +68,9 @@ jobs:
           else
             curl -fsSL -o ios.toolchain.cmake https://raw.githubusercontent.com/leetal/ios-cmake/master/ios.toolchain.cmake
           fi
-          cmake -B build -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake -DDEFAULT_ES=2 \
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DDEFAULT_ES=2 \
             -DNOX11=ON -DNOEGL=OFF -DSTATICLIB=OFF -DPLATFORM=OS64 \
             -DCMAKE_C_FLAGS="-Wno-error=implicit-function-declaration -fvisibility=default"
           cmake --build build --config RelWithDebInfo --target GL -j$(sysctl -n hw.ncpu)

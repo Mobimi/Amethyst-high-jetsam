@@ -47,6 +47,7 @@ jobs:
           cd gl4es-src
           cmake -B build \
             -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DPLATFORM=OS64 \
             -DDEPLOYMENT_TARGET=14.0 \
             -DDEFAULT_ES=2 \

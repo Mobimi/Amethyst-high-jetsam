@@ -181,12 +181,12 @@ index da0d1cdc..11483c4d 100755
  ##### 0.9.1
   * Added gl4es specifics glHint capabilities. If the extension GL_GL4ES_hint is present, than a few Hint are accessible. Look in include/gl4eshint.h for the list.
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 6f5d2a66..ae8b7809 100755
+index 6f5d2a66..a06cb82a 100755
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -1,4 +1,4 @@
 -cmake_minimum_required(VERSION 2.8)
-+cmake_minimum_required(VERSION 2.8.12)
++cmake_minimum_required(VERSION 3.5)
  
  project(gl4es LANGUAGES C)
  
@@ -7477,14 +7477,15 @@ diff --git a/spec/yml/glext-es2-1.1.yml b/spec/yml/glext-es2-1.1.yml
 old mode 100755
 new mode 100644
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 340a3139..8419261a 100644
+index 340a3139..33a442a3 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -1,171 +1,170 @@
+@@ -1,171 +1,171 @@
  include_directories(util)
  
 -#file(GLOB_RECURSE GL_SOURCES gl/*.c)
--SET(GL_SRC
++#file(GLOB_RECURSE GL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/gl/*.c)
+ SET(GL_SRC
 -    gl/arbconverter.c
 -	gl/arbgenerator.c
 -	gl/arbhelper.c
@@ -7553,7 +7554,6 @@ index 340a3139..8419261a 100644
 -	gl/wrap/gles.c
 -	gl/wrap/glstub.c
 -	gl/math/matheval.c
-+#file(GLOB_RECURSE GL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/gl/*.c)
 +    ${CMAKE_CURRENT_SOURCE_DIR}/gl/arbconverter.c
 +	${CMAKE_CURRENT_SOURCE_DIR}/gl/arbgenerator.c
 +	${CMAKE_CURRENT_SOURCE_DIR}/gl/arbhelper.c
@@ -7801,7 +7801,7 @@ index 340a3139..8419261a 100644
      )
      message(STATUS "Not on Linux: building without GLX support.")
  endif()
-@@ -173,22 +172,33 @@ endif()
+@@ -173,22 +173,33 @@ endif()
  if(AMIGAOS4)
      include_directories(agl)
      list(APPEND GL_SRC
@@ -7846,7 +7846,7 @@ index 340a3139..8419261a 100644
  else()
      add_library(GL SHARED ${GL_SRC})
      
-@@ -206,22 +216,47 @@ else()
+@@ -206,22 +217,47 @@ else()
      if(USE_CLOCK)
          target_link_libraries(GL rt)
      endif()
