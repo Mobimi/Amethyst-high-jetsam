@@ -50,6 +50,9 @@ void init_loadDefaultEnv() {
     // Override OpenGL version to 4.1 for Zink
     setenv("MESA_GL_VERSION_OVERRIDE", "4.1", 1);
 
+    // Disable GL4ES offscreen hardware test (PBuffer not supported on iOS ANGLE)
+    setenv("LIBGL_NOTEST", "1", 1);
+
     // Runs JVM in a separate thread
     setenv("HACK_IGNORE_START_ON_FIRST_THREAD", "1", 1);
 }

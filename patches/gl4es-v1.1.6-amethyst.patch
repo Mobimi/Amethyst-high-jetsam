@@ -18683,6 +18683,19 @@ index a8839cbc..52b4eca8
      if (gles_getProcAddress)
          return gles_getProcAddress(name);
  #ifdef AMIGAOS4
+     return os4GetProcAddress(name);
+ #elif defined __EMSCRIPTEN__
+     void *emscripten_GetProcAddress(const char *name);
+     return emscripten_GetProcAddress(name);
+ #elif defined __APPLE__
+-    // apple code seems to use RTLD_NEXT which is usually ((void*)-1)
+-    // remove if it not needed
+-    return dlsym((void*)(~(uintptr_t)0), name);
++    void *sym = NULL;
++    if (lib) sym = dlsym(lib, name);
++    if (!sym) sym = dlsym(((void*)-2), name);
++    if (!sym) sym = dlsym((void*)(~(uintptr_t)0), name);
++    return sym;
 diff --git a/src/gl/loader.h b/src/gl/loader.h
 old mode 100755
 new mode 100644
@@ -35511,7 +35524,19 @@ index ad72ceb4..1b2ce78e
              hardext.fbo = 1; 
              hardext.blendcolor = 1;
              hardext.blendsub = 1;
-@@ -271,7 +278,7 @@ void GetHardwareExtensions(int notest)
+@@ -226,6 +233,11 @@ void GetHardwareExtensions(int notest)
+     }
+     else
+ #endif
++    if (!egl_eglGetDisplay || !egl_eglBindAPI || !egl_eglInitialize) {
++        SHUT_LOGD("EGL functions missing, skipping hardware test\n");
++        return;
++    }
++
+         eglDisplay = egl_eglGetDisplay(EGL_DEFAULT_DISPLAY);
+ 
+     egl_eglBindAPI(EGL_OPENGL_ES_API);
+@@ -271,7 +283,7 @@ void GetHardwareExtensions(int notest)
      LOAD_GLES(glGetIntegerv);
      LOAD_GLES(glGetError);
      // Now get extensions
