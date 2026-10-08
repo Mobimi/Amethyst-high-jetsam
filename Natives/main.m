@@ -269,6 +269,17 @@ void init_setupHomeDirectory() {
     }
     
     setenv("AME_HOME", realpath(homeDir.UTF8String, NULL), 1);
+
+    // Ensure the latest UniversalJIT26 script is always available in Documents for StikDebug
+    NSString *inBundleScriptPath = [NSBundle.mainBundle pathForResource:@"UniversalJIT26" ofType:@"js"];
+    if (!inBundleScriptPath) {
+        inBundleScriptPath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"UniversalJIT26.js"];
+    }
+    if (inBundleScriptPath && [fm fileExistsAtPath:inBundleScriptPath]) {
+        NSString *destScriptPath = [NSString stringWithFormat:@"%s/UniversalJIT26.js", getenv("AME_HOME")];
+        [fm removeItemAtPath:destScriptPath error:nil];
+        [fm copyItemAtPath:inBundleScriptPath toPath:destScriptPath error:nil];
+    }
 }
 
 int main(int argc, char *argv[]) {
