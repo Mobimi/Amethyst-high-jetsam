@@ -23735,7 +23735,7 @@ diff --git a/src/gl/stencil.h b/src/gl/stencil.h
 old mode 100755
 new mode 100644
 diff --git a/src/gl/string_utils.c b/src/gl/string_utils.c
-index f156880c..ff83c682 100755
+index f156880c..15ab0985 100755
 --- a/src/gl/string_utils.c
 +++ b/src/gl/string_utils.c
 @@ -6,16 +6,16 @@
@@ -23759,17 +23759,46 @@ index f156880c..ff83c682 100755
          // check if good to replace, strchr also found '\0' :)
          if(strchr(AllSeparators, p[lS])!=NULL && (p==pBuffer || strchr(AllSeparators, p[-1])!=NULL)) {
              // move out rest of string
-@@ -32,9 +32,6 @@ char* InplaceReplace(char* pBuffer, int* size, const char* S, const char* D)
+@@ -30,11 +30,35 @@ char* InplaceReplace(char* pBuffer, int* size, const char* S, const char* D)
+     return pBuffer;
+ }
  
- char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, const int endIndex, const char* replacement)
+-char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, const int endIndex, const char* replacement)
++int CountStringSimple(const char* pBuffer, const char* S)
++{
++    const char* p = pBuffer;
++    int lS = strlen(S);
++    int n = 0;
++    while((p = strstr(p, S)))
++    {
++        n++;
++        p+=lS;
++    }
++    return n;
++}
++
++char* InplaceReplaceSimple(char* pBuffer, int* size, const char* S, const char* D)
  {
 -    //SHUT_LOGD("BY INDEX: %s", replacement);
 -    //SHUT_LOGD("BY INDEX: %i", strlen(replacement));
--
++    int lS = strlen(S), lD = strlen(D);
++    pBuffer = gl4es_resize_if_needed(pBuffer, size, (lD-lS)*CountStringSimple(pBuffer, S));
++    char* p = pBuffer;
++    while((p = strstr(p, S)))
++    {
++        memmove(p+lD, p+lS, strlen(p)-lS+1);
++        memcpy(p, D, strlen(D));
++        p+=lD;
++    }
++    return pBuffer;
++}
+ 
++char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, const int endIndex, const char* replacement)
++{
      int length_difference;
      if(endIndex < startIndex)
          length_difference = strlen(replacement) + (endIndex - startIndex);
-@@ -43,16 +40,13 @@ char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, con
+@@ -43,16 +67,13 @@ char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, con
      else
          length_difference = strlen(replacement) - (endIndex - startIndex); // Can be negative if repl is smaller
  
@@ -23788,7 +23817,7 @@ index f156880c..ff83c682 100755
  
      return pBuffer;
  }
-@@ -67,16 +61,32 @@ char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, con
+@@ -67,16 +88,32 @@ char * InplaceReplaceByIndex(char* pBuffer, int* size, const int startIndex, con
   */
  char * InplaceInsertByIndex(char * source, int *sourceLength, const int insertPoint, const char *insertedString){
      int insertLength = strlen(insertedString);
@@ -23824,7 +23853,7 @@ index f156880c..ff83c682 100755
      if(m!=master) {
          pBuffer += (m-master);
          master = m;
-@@ -89,14 +99,14 @@ char* InplaceInsert(char* pBuffer, const char* S, char* master, int* size)
+@@ -89,14 +126,14 @@ char* InplaceInsert(char* pBuffer, const char* S, char* master, int* size)
      return master;
  }
  
@@ -23841,7 +23870,7 @@ index f156880c..ff83c682 100755
  {
      int n=0;
      const char* p = pBuffer;
-@@ -107,11 +117,11 @@ int CountLine(const char* pBuffer)
+@@ -107,11 +144,11 @@ int CountLine(const char* pBuffer)
      return n;
  }
  
@@ -23855,7 +23884,7 @@ index f156880c..ff83c682 100755
      if(!end)
          return 0;
      while((p=strstr(p, "\n"))) {
-@@ -123,14 +133,14 @@ int GetLineFor(const char* pBuffer, const char* S)
+@@ -123,14 +160,14 @@ int GetLineFor(const char* pBuffer, const char* S)
      return n;
  }
  
@@ -23872,7 +23901,7 @@ index f156880c..ff83c682 100755
          // check if good to count, strchr also found '\0' :)
          if(strchr(AllSeparators, p[lS])!=NULL && (p==pBuffer || strchr(AllSeparators, p[-1])!=NULL))
              n++;
-@@ -139,13 +149,13 @@ int CountString(const char* pBuffer, const char* S)
+@@ -139,13 +176,13 @@ int CountString(const char* pBuffer, const char* S)
      return n;
  }
  
@@ -23888,7 +23917,7 @@ index f156880c..ff83c682 100755
          // check if good to count, strchr also found '\0' :)
          if(strchr(AllSeparators, p[lS])!=NULL && (p==pBuffer || strchr(AllSeparators, p[-1])!=NULL))
              return p;
-@@ -154,13 +164,13 @@ const char* FindString(const char* pBuffer, const char* S)
+@@ -154,13 +191,13 @@ const char* FindString(const char* pBuffer, const char* S)
      return NULL;
  }
  
@@ -23904,7 +23933,7 @@ index f156880c..ff83c682 100755
          // check if good to count, strchr also found '\0' :)
          if(strchr(AllSeparators, p[lS])!=NULL && (p==pBuffer || strchr(AllSeparators, p[-1])!=NULL))
              return p;
-@@ -169,7 +179,7 @@ char* FindStringNC(char* pBuffer, const char* S)
+@@ -169,7 +206,7 @@ char* FindStringNC(char* pBuffer, const char* S)
      return NULL;
  }
  
@@ -23913,7 +23942,7 @@ index f156880c..ff83c682 100755
      char* p = pBuffer;
      int newsize = strlen(pBuffer)+addsize+1;
      if (newsize>*size) {
-@@ -180,14 +190,14 @@ char* ResizeIfNeeded(char* pBuffer, int *size, int addsize) {
+@@ -180,14 +217,14 @@ char* ResizeIfNeeded(char* pBuffer, int *size, int addsize) {
      return p;
  }
  
@@ -23931,7 +23960,7 @@ index f156880c..ff83c682 100755
      switch(c) {
          case ' ':
          case '\t':
-@@ -202,7 +212,6 @@ int isBlank(char c)  {
+@@ -202,7 +239,6 @@ int isBlank(char c)  {
              return 0;
      }
  }
@@ -23939,7 +23968,7 @@ index f156880c..ff83c682 100755
  int isDigit(char value){
      return (value >= '0' && value <= '9');
  }
-@@ -211,40 +220,58 @@ int isValidFunctionName(char value){
+@@ -211,40 +247,58 @@ int isValidFunctionName(char value){
      return ((value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') || (value == '_'));
  }
  
@@ -23965,7 +23994,8 @@ index f156880c..ff83c682 100755
  
 -char* NextBlank(char* pBuffer) {
 +char* gl4es_prev_str(char* Str, char* pBuffer) {
-+    if(!pBuffer) return NULL;
+     if(!pBuffer) return NULL;
+-    while(!isBlank(*pBuffer))
 +    if(pBuffer == Str)
 +        return Str;
 +    // go to previous non blank
@@ -23979,8 +24009,7 @@ index f156880c..ff83c682 100755
 +}
 +
 +char* gl4es_next_blank(char* pBuffer) {
-     if(!pBuffer) return NULL;
--    while(!isBlank(*pBuffer))
++    if(!pBuffer) return NULL;
 +    while(!gl4es_is_blank(*pBuffer))
          ++pBuffer;
      return pBuffer;
@@ -24007,7 +24036,7 @@ index f156880c..ff83c682 100755
      if(!p2) return buff;
      int i=0;
      while(p1!=p2 && i<99)
-@@ -253,28 +280,28 @@ const char* GetNextStr(char* pBuffer) {
+@@ -253,28 +307,28 @@ const char* GetNextStr(char* pBuffer) {
      return buff;
  }
  
@@ -24042,10 +24071,10 @@ index f156880c..ff83c682 100755
          memmove(p+lD, p+lS, strlen(p)-lS+1);
          // replace
 diff --git a/src/gl/string_utils.h b/src/gl/string_utils.h
-index 246459db..52cbc15d 100755
+index 246459db..cc34c773 100755
 --- a/src/gl/string_utils.h
 +++ b/src/gl/string_utils.h
-@@ -6,29 +6,44 @@ extern const char* AllSeparators;
+@@ -6,29 +6,46 @@ extern const char* AllSeparators;
  int isDigit(char value);
  int isValidFunctionName(char value);
  
@@ -24071,6 +24100,8 @@ index 246459db..52cbc15d 100755
 +char* gl4es_str_next(char *pBuffer, const char* S); // mostly as strstr, but go after the substring if found
 +
 +// Compatibility wrappers
++int CountStringSimple(const char* pBuffer, const char* S);
++char* InplaceReplaceSimple(char* pBuffer, int* size, const char* S, const char* D);
  char* InplaceInsert(char* pBuffer, const char* S, char* master, int* size);
 +char* InplaceReplace(char* pBuffer, int* size, const char* S, const char* D);
  char* GetLine(char* pBuffer, int num);
@@ -27315,6 +27346,18 @@ index 97ad5cc7..71e12227 100755
 +void APIENTRY_GL4ES gl4es_glVertexAttribDivisor(GLuint index, GLuint divisor);
  
  #endif // _GL4ES_VERTEXATTRIB_H_
+diff --git a/src/gl/vgpu/shaderconv.c b/src/gl/vgpu/shaderconv.c
+index 52b9272f..e4d2b783 100644
+--- a/src/gl/vgpu/shaderconv.c
++++ b/src/gl/vgpu/shaderconv.c
+@@ -4,6 +4,7 @@
+ #include <math.h>
+ #include <string.h>
+ #include <stdlib.h>
++#include <ctype.h>
+ #include "shaderconv.h"
+ #include "../string_utils.h"
+ #include "../logs.h"
 diff --git a/src/gl/wrap/gl4es.h b/src/gl/wrap/gl4es.h
 old mode 100755
 new mode 100644
