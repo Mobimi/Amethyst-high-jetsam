@@ -305,6 +305,8 @@ int main(int argc, char *argv[]) {
 
     setenv("BUNDLE_PATH", dirname(argv[0]), 1);
     isJailbroken = init_checkForJailbreak();
+    signal(SIGTRAP, SIG_IGN);
+    signal(SIGINT, SIG_IGN);
     init_setupHomeDirectory();
     init_redirectStdio();
     init_logDeviceAndVer(argv[0]);
