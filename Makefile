@@ -327,6 +327,7 @@ dep_mg:
 dep_gl4es_116:
 	echo '[Amethyst v$(VERSION)] dep_gl4es_116 - start'
 	mkdir -p $(WORKINGDIR)/gl4es_116
+	rm -rf $(WORKINGDIR)/gl4es_116/CMakeCache.txt $(WORKINGDIR)/gl4es_116/CMakeFiles
 	cd $(WORKINGDIR)/gl4es_116 && cmake \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
 		-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
@@ -339,7 +340,8 @@ dep_gl4es_116:
 		-DCMAKE_C_FLAGS="-arch arm64 -Wno-error=implicit-function-declaration" \
 		-DDEFAULT_ES=2 \
 		-DNOX11=ON \
-		-DNOEGL=OFF \
+		-DNOEGL=ON \
+		-DNO_INIT_CONSTRUCTOR=ON \
 		-DSTATICLIB=OFF \
 		$(SOURCEDIR)/Natives/external/gl4es_116
 
@@ -376,7 +378,10 @@ dep_gl4es_116:
 		nm -gU $(WORKINGDIR)/libgl4es_116.dylib | grep -q "_gl4es_GetProcAddress" || { \
 			echo "ERROR: Missing required symbol _gl4es_GetProcAddress in libgl4es_116.dylib"; exit 1; \
 		}; \
-		echo "Successfully verified libgl4es_116.dylib Mach-O arm64 and critical symbols (_glBegin, _glScissor, _gl4es_GetProcAddress)."; \
+		nm -gU $(WORKINGDIR)/libgl4es_116.dylib | grep -q "_initialize_gl4es" || { \
+			echo "ERROR: Missing required symbol _initialize_gl4es in libgl4es_116.dylib"; exit 1; \
+		}; \
+		echo "Successfully verified libgl4es_116.dylib Mach-O arm64 and critical symbols (_glBegin, _glScissor, _gl4es_GetProcAddress, _initialize_gl4es)."; \
 	fi
 	mkdir -p $(SOURCEDIR)/Natives/resources/Frameworks
 	cp $(WORKINGDIR)/libgl4es_116.dylib $(SOURCEDIR)/Natives/resources/Frameworks/libgl4es_116.dylib

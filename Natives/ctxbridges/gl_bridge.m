@@ -113,6 +113,43 @@ gl_render_window_t* gl_init_context(gl_render_window_t *share) {
     return bundle;
 }
 
+extern void* get_gl4es_116_handle(void);
+
+static void* amethyst_gles_proc_address(const char* name) {
+    if (!name) return NULL;
+    return dlsym(RTLD_DEFAULT, name);
+}
+
+static void init_gl4es_116_if_needed(void) {
+    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+
+    void* gl4esHandle = get_gl4es_116_handle();
+    if (!gl4esHandle) {
+        return;
+    }
+
+    pthread_once(&once_control, ^{
+        NSLog(@"[Amethyst] Context is CURRENT (thread=%p). Initializing GL4ES 1.1.6...", pthread_self());
+
+        typedef void (*gl4es_set_proc_t)(void *(*)(const char *));
+        gl4es_set_proc_t set_proc = (gl4es_set_proc_t)dlsym(gl4esHandle, "set_getprocaddress");
+        if (set_proc) {
+            NSLog(@"[Amethyst] Setting GL4ES 1.1.6 proc address resolver via RTLD_DEFAULT...");
+            set_proc(amethyst_gles_proc_address);
+        }
+
+        typedef void (*gl4es_init_func_t)(void);
+        gl4es_init_func_t init_func = (gl4es_init_func_t)dlsym(gl4esHandle, "initialize_gl4es");
+        if (init_func) {
+            NSLog(@"[Amethyst] Calling initialize_gl4es() at %p...", init_func);
+            init_func();
+            NSLog(@"[Amethyst] GL4ES 1.1.6 initialized successfully on active context!");
+        } else {
+            NSLog(@"[Amethyst] ERROR: Could not find initialize_gl4es in GL4ES 1.1.6 handle: %s", dlerror());
+        }
+    });
+}
+
 void gl_make_current(gl_render_window_t* bundle) {
     if(!bundle) {
         if(handle.eglMakeCurrent(g_EglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
@@ -123,6 +160,7 @@ void gl_make_current(gl_render_window_t* bundle) {
 
     if(handle.eglMakeCurrent(g_EglDisplay, bundle->surface, bundle->surface, bundle->context)) {
         currentBundle = (basic_render_window_t *)bundle;
+        init_gl4es_116_if_needed();
     } else {
         NSLog(@"EGLBridge: eglMakeCurrent returned with error: 0x%x", handle.eglGetError());
     }

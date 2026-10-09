@@ -48,6 +48,12 @@ int pojavInit(BOOL useStackQueue) {
     return JNI_TRUE;
 }
 
+static void* s_gl4es116Handle = NULL;
+
+void* get_gl4es_116_handle(void) {
+    return s_gl4es116Handle;
+}
+
 int pojavInitOpenGL() {
     NSString *renderer = NSProcessInfo.processInfo.environment[@"RENDERER"];
     BOOL isAuto = [renderer isEqualToString:@"auto"];
@@ -75,6 +81,12 @@ int pojavInitOpenGL() {
     void* handle = dlopen([NSString stringWithFormat:@"@rpath/%@", renderer].UTF8String, RTLD_GLOBAL);
     if (!handle) {
         NSLog(@"[Amethyst] Failed to dlopen %@: %s", renderer, dlerror());
+    }
+    if ([renderer isEqualToString:@ RENDERER_NAME_GL4ES_116]) {
+        s_gl4es116Handle = handle;
+        NSLog(@"[Amethyst] GL4ES 1.1.6 loaded (handle=%p). Constructor deferred until EGL context is current.", handle);
+    } else {
+        s_gl4es116Handle = NULL;
     }
 
     return !br_init();

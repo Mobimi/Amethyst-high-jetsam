@@ -253,6 +253,7 @@ void GetHardwareExtensions(int notest)
     LOAD_GLES(glGetError);
     // Now get extensions
     const char *Exts = (const char *) gles_glGetString(GL_EXTENSIONS);
+    if (!Exts) Exts = "";
     // Parse them!
     #define S(A, B, C) if(strstr(Exts, A)) { hardext.B = 1; SHUT_LOGD("Extension %s detected%s",A, C?" and used\n":"\n"); } 
     if(hardext.esversion>1) hardext.npot = 1;
