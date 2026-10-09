@@ -27,6 +27,7 @@ jobs:
           mkdir -p build-gl4es-116
           cd build-gl4es-116
           cmake \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_CROSSCOMPILING=true \
             -DCMAKE_SYSTEM_NAME=Darwin \
@@ -49,16 +50,33 @@ jobs:
       - name: Verify Mach-O library details
         run: |
           BUILT_LIB=$(find build-gl4es-116 -name "*gl4es_116*.dylib" -o -name "libGL.dylib" | head -n 1)
+          if [ -z "$BUILT_LIB" ] || [ ! -f "$BUILT_LIB" ]; then
+            BUILT_LIB=$(find Natives/external/gl4es_116 -name "*gl4es_116*.dylib" -o -name "libGL.dylib" | head -n 1)
+          fi
+          if [ -z "$BUILT_LIB" ] || [ ! -f "$BUILT_LIB" ]; then
+            echo "ERROR: Built library not found!"
+            exit 1
+          fi
           echo "Found library at: $BUILT_LIB"
+          if [ ! -s "$BUILT_LIB" ]; then
+            echo "ERROR: Library file is empty!"
+            exit 1
+          fi
           file "$BUILT_LIB"
+          file "$BUILT_LIB" | grep -E "Mach-O.*arm64" || {
+            echo "ERROR: $BUILT_LIB is not a Mach-O arm64 binary!"
+            exit 1
+          }
           otool -hv "$BUILT_LIB"
           otool -L "$BUILT_LIB"
           echo "=== Exported symbols sample ==="
           nm -gU "$BUILT_LIB" | head -n 30
           echo "=== Check critical OpenGL symbols ==="
-          nm -gU "$BUILT_LIB" | grep "_glBegin" || true
-          nm -gU "$BUILT_LIB" | grep "_glScissor" || true
-          nm -gU "$BUILT_LIB" | grep "_gl4es_GetProcAddress" || true
+          nm -gU "$BUILT_LIB" | grep "_glBegin" || { echo "ERROR: Missing symbol _glBegin"; exit 1; }
+          nm -gU "$BUILT_LIB" | grep "_glScissor" || { echo "ERROR: Missing symbol _glScissor"; exit 1; }
+          nm -gU "$BUILT_LIB" | grep "_gl4es_GetProcAddress" || { echo "ERROR: Missing symbol _gl4es_GetProcAddress"; exit 1; }
+          echo "All critical symbols (_glBegin, _glScissor, _gl4es_GetProcAddress) verified successfully."
+          mkdir -p Natives/resources/Frameworks
           cp -f "$BUILT_LIB" Natives/resources/Frameworks/libgl4es_116.dylib
 
       - name: Upload libgl4es_116.dylib
