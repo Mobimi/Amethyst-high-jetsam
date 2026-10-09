@@ -146,6 +146,31 @@ jobs:
               SDKPATH="$SDKPATH"
           fi
 
+      - name: Verify GL4ES 1.1.6 inside packaged apps
+        run: |
+          echo "=== Verifying packaged archives in artifacts/ ==="
+          ls -lah artifacts/
+          FOUND_PACKAGES=0
+          for pkg in artifacts/*.ipa artifacts/*.tipa; do
+            if [ -f "$pkg" ]; then
+              FOUND_PACKAGES=1
+              echo "Checking package: $pkg"
+              unzip -l "$pkg" | grep "Payload/AngelAuraAmethyst.app/Frameworks/libgl4es_116.dylib" || {
+                echo "ERROR: libgl4es_116.dylib is missing in $pkg!"
+                exit 1
+              }
+              unzip -l "$pkg" | grep "Payload/AngelAuraAmethyst.app/Frameworks/libgl4es_114.dylib" || {
+                echo "ERROR: libgl4es_114.dylib is missing in $pkg!"
+                exit 1
+              }
+              echo "Successfully verified both libgl4es_116.dylib and libgl4es_114.dylib in $pkg"
+            fi
+          done
+          if [ "$FOUND_PACKAGES" -eq 0 ]; then
+            echo "ERROR: No .ipa or .tipa packages found in artifacts/!"
+            exit 1
+          fi
+
       - name: Upload regular ipa
         uses: actions/upload-artifact@main
         with:

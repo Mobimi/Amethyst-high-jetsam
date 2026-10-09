@@ -53,7 +53,12 @@
 #endif
 
 #ifndef AliasDecl
- #ifdef __GNUC__
+ #if defined(__APPLE__) && defined(__arm64__)
+  #define AliasDecl(RET,NAME,DEF,OLD) \
+      __attribute__((naked)) RET APIENTRY_GL4ES NAME DEF { \
+          __asm__("b _" #OLD); \
+      }
+ #elif defined(__GNUC__)
   #define AliasDecl(RET,NAME,DEF,OLD) \
    RET APIENTRY_GL4ES NAME DEF __attribute__((alias(_STM(OLD,DEF))))
  #elif defined(_MSC_VER)

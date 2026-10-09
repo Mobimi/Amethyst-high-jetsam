@@ -12,8 +12,8 @@ Vendored to provide an independent, selectable **GL4ES 1.1.6 (ptitSeb)** rendere
 
 ## Necessary Amethyst Platform Adaptations
 
-1. **Mach-O Dynamic Export on iOS ARM64 (`src/gl/attributes.h`):**
-   Apple Clang on Darwin/Mach-O does not support GCC-style `__attribute__((alias(...)))` across compilation units. We define `AliasExport(name)` on `__APPLE__ && __arm64__` as a naked thunk with a single direct branch (`b _<name>`), matching how Mach-O iOS dylibs expose the standard desktop OpenGL symbol set (`_gl*`) delegating to internal `_gl4es_*` functions.
+1. **Mach-O Dynamic Export & Alias on iOS ARM64 (`src/gl/attributes.h`):**
+   Apple Clang on Darwin/Mach-O does not support GCC-style `__attribute__((alias(...)))`. We define both `AliasExport(name)` and `AliasDecl(RET,NAME,DEF,OLD)` on `__APPLE__ && __arm64__` as naked thunks with a single direct branch (`b _<target>`), matching how Mach-O iOS dylibs expose the standard desktop OpenGL symbol set (`_gl*`) and redirect aliased entrypoints (`gl4es_glEnableClientStatei`, etc.) delegating to internal functions.
 2. **Dynamic Constructor Initialization (`src/gl/init.c`):**
    Allowed `initialize_gl4es()` constructor on Apple shared library targets so that `dlopen("@rpath/libgl4es_116.dylib", RTLD_GLOBAL)` in `pojavInitOpenGL()` automatically activates the backend.
 3. **EGL Platform Types (`include/EGL/eglplatform.h`):**
