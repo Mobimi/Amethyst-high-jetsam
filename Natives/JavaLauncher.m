@@ -72,7 +72,7 @@ static void startActiveJetsamShield(void) {
                 JNIEnv *env = NULL;
                 BOOL needDetach = NO;
                 if ((*jvm)->GetEnv(jvm, (void **)&env, JNI_VERSION_1_8) != JNI_OK) {
-                    if ((*jvm)->AttachCurrentThread(jvm, (void **)&env, NULL) == JNI_OK) {
+                    if ((*jvm)->AttachCurrentThread(jvm, (void *)&env, NULL) == JNI_OK) {
                         needDetach = YES;
                     }
                 }
