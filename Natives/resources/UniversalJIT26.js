@@ -90,11 +90,8 @@ while (!detached) {
             log(`Failed to extract signal number: ${signum}`);
             continue;
         }
-        log(`Ignoring non-breakpoint signal 0x${signum} and continuing thread ${tid}`);
-        let contResp = send_command(`vCont;c:${tid}`);
-        if (!contResp || contResp.startsWith("E")) {
-            send_command(`c`);
-        }
+        log(`Continuing with signal 0x${signum}`);
+        send_command(`vCont;S${signum}:${tid}`);
         continue;
     }
     

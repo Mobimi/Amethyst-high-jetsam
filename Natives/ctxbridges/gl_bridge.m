@@ -6,11 +6,6 @@
 #include "environ.h"
 #include "gl_bridge.h"
 #include "utils.h"
-#include <pthread.h>
-#if __has_include(<pthread/qos.h>)
-#include <pthread/qos.h>
-#endif
-#import "LauncherPreferences.h"
 
 static EGLDisplay g_EglDisplay;
 static egl_library handle;
@@ -134,9 +129,6 @@ void gl_make_current(gl_render_window_t* bundle) {
 }
 
 void gl_swap_buffers() {
-    if (getPrefBool(@"experimental.pcore_qos_priority")) {
-        pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
-    }
     if (!handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface) && handle.eglGetError() == EGL_BAD_SURFACE) {
         NSLog(@"eglSwapBuffers error 0x%x", handle.eglGetError());
         //stopSwapBuffers = true;

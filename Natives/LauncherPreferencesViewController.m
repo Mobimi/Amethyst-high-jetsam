@@ -44,7 +44,7 @@
     self.hasDetail = YES;
     self.prefDetailVisible = self.navigationController == nil;
     
-    self.prefSections = @[@"general", @"video", @"control", @"java", @"experimental", @"debug"];
+    self.prefSections = @[@"general", @"video", @"control", @"java", @"debug"];
 
     self.rendererKeys = getRendererKeys(NO);
     self.rendererList = getRendererNames(NO);
@@ -362,53 +362,6 @@
                     return view.value >= NSProcessInfo.processInfo.physicalMemory / 1048576 * 0.37;
                 },
                 @"warnKey": @"mem_warn"
-            }
-        ], @[
-            // Experimental optimizations (Active Jetsam Shield, Dynamic Heap Shrinking, P-Core QoS, Async Shaders, Smart RAM Allocator)
-            @{@"icon": @"flask"},
-            @{@"key": @"active_jetsam_shield",
-                @"hasDetail": @YES,
-                @"icon": @"shield.lefthalf.filled",
-                @"type": self.typeSwitch,
-                @"enableCondition": whenNotInGame
-            },
-            @{@"key": @"dynamic_heap_shrinking",
-                @"hasDetail": @YES,
-                @"icon": @"arrow.down.right.and.arrow.up.left",
-                @"type": self.typeSwitch,
-                @"enableCondition": whenNotInGame
-            },
-            @{@"key": @"pcore_qos_priority",
-                @"hasDetail": @YES,
-                @"icon": @"bolt.fill",
-                @"type": self.typeSwitch
-            },
-            @{@"key": @"async_shader_pipeline",
-                @"hasDetail": @YES,
-                @"icon": @"cpu",
-                @"type": self.typeSwitch,
-                @"enableCondition": whenNotInGame
-            },
-            @{@"key": @"smart_ram_allocator",
-                @"hasDetail": @YES,
-                @"icon": @"gauge.with.needle.fill",
-                @"type": self.typeButton,
-                @"enableCondition": whenNotInGame,
-                @"action": ^{
-                    unsigned long long totalMB = NSProcessInfo.processInfo.physicalMemory >> 20;
-                    float ratio = 0.50f;
-                    if (getEntitlementValue(@"com.apple.developer.kernel.increased-memory-limit")) {
-                        ratio = 0.55f;
-                    }
-                    int safeRAM = (int)(totalMB * ratio);
-                    if (safeRAM < 1024) safeRAM = 1024;
-                    if (safeRAM > 5120) safeRAM = 5120;
-                    setPrefInt(@"java.allocated_memory", safeRAM);
-                    setPrefBool(@"java.auto_ram", NO);
-                    [self.tableView reloadData];
-                    NSString *msg = [NSString stringWithFormat:localize(@"preference.detail.smart_ram_success", nil), (int)(totalMB / 1024), safeRAM];
-                    showDialog(localize(@"preference.title.smart_ram_allocator", nil), msg);
-                }
             }
         ], @[
             // Debug settings - only recommended for developer use

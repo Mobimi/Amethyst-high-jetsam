@@ -11,10 +11,6 @@
 #include <mach/mach.h>
 
 #include "utils.h"
-#include <pthread.h>
-#if __has_include(<pthread/qos.h>)
-#include <pthread/qos.h>
-#endif
 
 #import "ios_uikit_bridge.h"
 #import "JavaLauncher.h"
@@ -36,72 +32,6 @@ BOOL validateVirtualMemorySpace(size_t size) {
     return YES;
 }
 
-static dispatch_source_t s_jetsamShieldSource = NULL;
-
-static void startActiveJetsamShield(void) {
-    if (!getPrefBool(@"experimental.active_jetsam_shield")) {
-        return;
-    }
-    if (s_jetsamShieldSource != NULL) {
-        return;
-    }
-
-    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
-    s_jetsamShieldSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0,
-                                                  DISPATCH_MEMORYPRESSURE_WARN | DISPATCH_MEMORYPRESSURE_CRITICAL, queue);
-    if (!s_jetsamShieldSource) {
-        NSLog(@"[JetsamShield] Warning: Unable to create memory pressure dispatch source.");
-        return;
-    }
-
-    dispatch_source_set_event_handler(s_jetsamShieldSource, ^{
-        unsigned long pressure = dispatch_source_get_data(s_jetsamShieldSource);
-        NSLog(@"[JetsamShield] ⚠️ Darwin memory pressure event: 0x%lx. Triggering active garbage collection...", pressure);
-
-        // 1. Invoke System.gc() via JNI
-        JavaVM *jvm = NULL;
-        jsize nVMs = 0;
-        typedef jint (*JNI_GetCreatedJavaVMs_func)(JavaVM **, jsize, jsize *);
-        void *libjvm = dlopen(getenv("INTERNAL_JLI_PATH"), RTLD_GLOBAL | RTLD_NOLOAD);
-        if (!libjvm) {
-            libjvm = dlopen(NULL, RTLD_GLOBAL);
-        }
-        if (libjvm) {
-            JNI_GetCreatedJavaVMs_func pGetVMs = (JNI_GetCreatedJavaVMs_func)dlsym(libjvm, "JNI_GetCreatedJavaVMs");
-            if (pGetVMs && pGetVMs(&jvm, 1, &nVMs) == 0 && nVMs > 0 && jvm != NULL) {
-                JNIEnv *env = NULL;
-                BOOL needDetach = NO;
-                if ((*jvm)->GetEnv(jvm, (void **)&env, JNI_VERSION_1_8) != JNI_OK) {
-                    if ((*jvm)->AttachCurrentThread(jvm, (void *)&env, NULL) == JNI_OK) {
-                        needDetach = YES;
-                    }
-                }
-                if (env) {
-                    jclass sysClass = (*env)->FindClass(env, "java/lang/System");
-                    if (sysClass) {
-                        jmethodID gcMethod = (*env)->GetStaticMethodID(env, sysClass, "gc", "()V");
-                        if (gcMethod) {
-                            (*env)->CallStaticVoidMethod(env, sysClass, gcMethod);
-                            NSLog(@"[JetsamShield] ✅ Emergency System.gc() invoked successfully via JNI!");
-                        }
-                    }
-                    if (needDetach) {
-                        (*jvm)->DetachCurrentThread(jvm);
-                    }
-                }
-            }
-        }
-
-        // 2. Clear native cache
-        @autoreleasepool {
-            [[NSURLCache sharedURLCache] removeAllCachedResponses];
-        }
-    });
-
-    dispatch_resume(s_jetsamShieldSource);
-    NSLog(@"[JetsamShield] Active Jetsam Shield activated successfully.");
-}
-
 void init_loadDefaultEnv() {
     /* Define default env */
 
@@ -119,9 +49,6 @@ void init_loadDefaultEnv() {
 
     // Override OpenGL version to 4.1 for Zink
     setenv("MESA_GL_VERSION_OVERRIDE", "4.1", 1);
-
-    // Disable GL4ES offscreen hardware test (PBuffer not supported on iOS ANGLE)
-    setenv("LIBGL_NOTEST", "1", 1);
 
     // Runs JVM in a separate thread
     setenv("HACK_IGNORE_START_ON_FIRST_THREAD", "1", 1);
@@ -200,9 +127,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
                     return 1;
                 }
             }
-            NSString *destScriptPath = [NSString stringWithFormat:@"%s/UniversalJIT26.js", getenv("AME_HOME")];
-            [NSFileManager.defaultManager removeItemAtPath:destScriptPath error:nil];
-            [NSFileManager.defaultManager copyItemAtPath:inBundleScriptPath toPath:destScriptPath error:nil];
+            [NSFileManager.defaultManager copyItemAtPath:inBundleScriptPath toPath:[NSString stringWithFormat:@"%s/UniversalJIT26.js", getenv("AME_HOME")] error:nil];
             showDialog(localize(@"Error", nil), @"Support for legacy script has been removed. Please switch to Universal JIT script. To import it, long-press on Amethyst when enabling JIT in StikDebug and tap \"Assign Script\", then go to Amethyst's Documents directory and pick it. (on sideloaded StikDebug, the builtin script is named Amethyst-MeloNX.js)");
             [PLLogOutputView handleExitCode:1];
             return 1;
@@ -352,24 +277,6 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     // Disable Forge 1.16.x early progress window
     margv[++margc] = "-Dfml.earlyprogresswindow=false";
 
-    // Experimental: Dynamic Heap Shrinking
-    if (getPrefBool(@"experimental.dynamic_heap_shrinking")) {
-        margv[++margc] = "-XX:+UnlockDiagnosticVMOptions";
-        margv[++margc] = "-XX:+ShrinkHeapInSteps";
-        margv[++margc] = "-XX:MinHeapFreeRatio=10";
-        margv[++margc] = "-XX:MaxHeapFreeRatio=20";
-        NSLog(@"[JavaLauncher] Injected Dynamic Heap Shrinking JVM flags (-XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20)");
-    }
-
-    // Experimental: Async Shader Pipeline
-    if (getPrefBool(@"experimental.async_shader_pipeline")) {
-        setenv("LIBGL_STREAM", "1", 1);
-        setenv("LIBGL_ASYNC_SHADERS", "1", 1);
-        margv[++margc] = "-Dminecraft.async_shaders=true";
-        margv[++margc] = "-Dforge.enableAsyncShaders=true";
-        NSLog(@"[JavaLauncher] Enabled Async Shader Pipeline (LIBGL_STREAM=1, LIBGL_ASYNC_SHADERS=1)");
-    }
-
     // Load java
     NSString *libjlipath8 = [NSString stringWithFormat:@"%@/lib/jli/libjli.dylib", javaHome]; // java 8
     NSString *libjlipath11 = [NSString stringWithFormat:@"%@/lib/libjli.dylib", javaHome]; // java 11+
@@ -492,15 +399,6 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
 
     // Free split VC
     tmpRootVC = nil;
-
-    // Experimental: Active Jetsam Shield
-    startActiveJetsamShield();
-
-    // Experimental: P-Core QoS Priority
-    if (getPrefBool(@"experimental.pcore_qos_priority")) {
-        pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
-        NSLog(@"[JavaLauncher] Main JVM thread assigned QOS_CLASS_USER_INTERACTIVE (P-Core priority)");
-    }
 
     return pJLI_Launch(++margc, margv,
                    0, NULL, // sizeof(const_jargs) / sizeof(char *), const_jargs,

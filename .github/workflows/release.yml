@@ -21,11 +21,13 @@ jobs:
     runs-on: MacStadium
     steps:
       - name: Remove work folders
+        env:
+          password: ${{ secrets.ELLIE_MINI_SECRET }}
         run: |
           echo "before"
           ls -lah ./
-          rm -rf ./* || true
-          rm -rf ./.??* || true
+          echo $password | sudo -S rm -rf ./* || true
+          echo $password | sudo -S rm -rf ./.??* || true
           echo "after"
           ls -lah ./
           
@@ -49,37 +51,34 @@ jobs:
           key: gl4es-holy-ios-shared-2-${{ steps.gl4es-sha.outputs.sha }}
 
       - name: Get gl4es
-        uses: actions/checkout@v4
+        if: false && steps.gl4es-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@main
         with:
           repository: 'PojavLauncherTeam/gl4es-114-extra'
           path: 'gl4es'
 
-      - name: Build gl4es 1.1.6
+      - name: Build gl4es
+        if: false && steps.gl4es-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
         run: |
           cd gl4es
-          if [ -f ../patches/gl4es-v1.1.6-amethyst.patch ]; then
-            git apply --binary --whitespace=nowarn ../patches/gl4es-v1.1.6-amethyst.patch
-            echo "Applied GL4ES v1.1.6 patch successfully."
-          fi
-          if [ -f ../patches/ios.toolchain.cmake ]; then
-            cp -f ../patches/ios.toolchain.cmake ./ios.toolchain.cmake
-          else
-            curl -fsSL -o ios.toolchain.cmake https://raw.githubusercontent.com/leetal/ios-cmake/master/ios.toolchain.cmake
-          fi
-          cmake -B build -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-            -DDEFAULT_ES=2 \
+          git config --global user.email "github-actions@users.noreply.github.com"
+          git config --global user.name "github-actions"
+          export PATH=/opt/procursus/bin:$PATH
+          wget https://github.com/leetal/ios-cmake/raw/master/ios.toolchain.cmake
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=ios.toolchain.cmake -DDEFAULT_ES=2 \
             -DNOX11=ON -DNOEGL=OFF -DSTATICLIB=OFF -DPLATFORM=OS64 \
-            -DCMAKE_C_FLAGS="-Wno-error=implicit-function-declaration -fvisibility=default"
-          cmake --build build --config RelWithDebInfo --target GL -j$(sysctl -n hw.ncpu)
-          BUILT_LIB=$(find . -name "libGL.dylib" | head -n 1)
-          if otool -L "$BUILT_LIB" | grep -q "MetalANGLE"; then
-            install_name_tool -change @rpath/MetalANGLE.framework/MetalANGLE @rpath/libGLESv2.framework/libGLESv2 "$BUILT_LIB" || true
-          fi
-          echo "=== libGL.dylib dependencies ==="
-          otool -L "$BUILT_LIB"
-          cp -f "$BUILT_LIB" ../Natives/resources/Frameworks/libgl4es_116.dylib
-          ls -lah ../Natives/resources/Frameworks/libgl4es_116.dylib
+            -DCMAKE_C_FLAGS=-Wno-error=implicit-function-declaration
+          cmake --build build --config RelWithDebInfo --target GL
+          cp -R lib/libGL.dylib ../Natives/resources/Frameworks/libgl4es_114.dylib
+          
+      - name: Push gl4es
+        if: false && github.event != 'pull_request' && github.ref_name == 'main' && steps.gl4es-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          git add Natives/resources/Frameworks/libgl4es_114.dylib
+          git commit -am "CI: Update gl4es"
+          git push
           
       - name: Get JRE8
         uses: dawidd6/action-download-artifact@v2
@@ -118,6 +117,8 @@ jobs:
           name: jre21-ios-aarch64
 
       - name: Build for ${{ matrix.platform_name }}
+        env:
+          password: ${{ secrets.ELLIE_MINI_SECRET }}
         run: |
           export PATH=/opt/procursus/bin:/opt/homebrew/bin:$PATH
           export RUNNER=1

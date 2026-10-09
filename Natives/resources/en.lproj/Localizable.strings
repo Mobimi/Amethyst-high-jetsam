@@ -140,9 +140,6 @@
 //"preference.section.footer.control" = "";
 "preference.section.java" = "Java Tweaks";
 //"preference.section.footer.java" = "";
-"preference.section.experimental" = "Experimental Optimizations";
-"preference.section.footer.experimental" = "Advanced memory and performance tweaks for iOS 18: Jetsam shield, dynamic heap shrinking, and P-Core QoS priority.";
-
 
 "preference.title.confirm" = "Are you sure?";
 
@@ -185,7 +182,6 @@
 
 "preference.title.renderer.debug.auto" = "Auto: gl4es or ANGLE";
 "preference.title.renderer.debug.gl4es" = "holy gl4es - exports OpenGL 2.1";
-"preference.title.renderer.debug.gl4es_116" = "gl4es 1.1.6 (experimental) - exports OpenGL 2.1";
 "preference.title.renderer.debug.angle" = "ANGLE (1.17+) - exports OpenGL 3.2 (Core Profile, limited)";
 "preference.title.renderer.debug.mg" = "MobileGlues (1.17+) - exports OpenGL 4.0, EXPERIMENTAL";
 "preference.title.renderer.debug.zink" = "Zink (Mesa 21.0) - exports OpenGL 4.1";
@@ -336,20 +332,3 @@
 "controller_configurator.section.footer.menu_mappings" = "Bindings when the mouse is not locked, such as on the title screen or in the pause menu.";
 "controller_configurator.section.controller_style" = "Controller type";
 "controller_configurator.section.footer.controller_style" = "Show different controller button names in this configurator.";
-
-"preference.title.active_jetsam_shield" = "Active Jetsam Shield";
-"preference.detail.active_jetsam_shield" = "Listens directly to Darwin kernel memory pressure alerts (MEMORYPRESSURE_WARN/CRITICAL). Forces emergency Java garbage collection (System.gc()) and clears native caches before Jetsam terminates the app.";
-
-"preference.title.dynamic_heap_shrinking" = "Dynamic Heap Shrinking";
-"preference.detail.dynamic_heap_shrinking" = "Injects JVM flags (-XX:+ShrinkHeapInSteps, -XX:MinHeapFreeRatio=10). Releases 500MB - 1GB of unused Java heap back to iOS after loading mods, preventing memory accumulation over long sessions.";
-
-"preference.title.pcore_qos_priority" = "P-Core QoS Priority";
-"preference.detail.pcore_qos_priority" = "Assigns Minecraft render thread to QOS_CLASS_USER_INTERACTIVE priority. Prevents iOS 18 from relegating the game to efficiency cores (E-Cores), eliminating sudden FPS drops.";
-
-"preference.title.async_shader_pipeline" = "Async Shader Pipeline";
-"preference.detail.async_shader_pipeline" = "Enables GL4ES to compile new shaders on background threads, eliminating 0.5s lag spikes when exploring or encountering new mobs in modpacks.";
-
-"preference.title.smart_ram_allocator" = "Smart RAM Allocator";
-"preference.detail.smart_ram_allocator" = "Calculates the safest allocated RAM based on device physical memory (capped at 50-55% of total RAM to prevent iOS Jetsam termination) and automatically updates Java settings.";
-"preference.detail.smart_ram_success" = "Detected %dGB device RAM. Automatically allocated safe memory: %d MB.";
-
