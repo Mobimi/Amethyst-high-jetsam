@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <dispatch/dispatch.h>
 #import "SurfaceViewController.h"
 
 #include <dlfcn.h>
@@ -9,28 +10,30 @@
 
 static EGLDisplay g_EglDisplay;
 static egl_library handle;
+static void* g_tinygl4angle_handle = NULL;
 
 void dlsym_EGL() {
-    void* dl_handle = dlopen("@rpath/libtinygl4angle.dylib", RTLD_GLOBAL);
-    NSCAssert(dl_handle, @(dlerror()));
-    handle.eglBindAPI = dlsym(dl_handle, "eglBindAPI");
-    handle.eglChooseConfig = dlsym(dl_handle, "eglChooseConfig");
-    handle.eglCreateContext = dlsym(dl_handle, "eglCreateContext");
-    handle.eglCreateWindowSurface = dlsym(dl_handle, "eglCreateWindowSurface");
-    handle.eglDestroyContext = dlsym(dl_handle, "eglDestroyContext");
-    handle.eglDestroySurface = dlsym(dl_handle, "eglDestroySurface");
-    handle.eglGetConfigAttrib = dlsym(dl_handle, "eglGetConfigAttrib");
-    handle.eglGetCurrentContext = dlsym(dl_handle, "eglGetCurrentContext");
-    handle.eglGetDisplay = dlsym(dl_handle, "eglGetDisplay");
-    handle.eglGetError = dlsym(dl_handle, "eglGetError");
-    handle.eglGetPlatformDisplay = dlsym(dl_handle, "eglGetPlatformDisplay");
-    handle.eglInitialize = dlsym(dl_handle, "eglInitialize");
-    handle.eglMakeCurrent = dlsym(dl_handle, "eglMakeCurrent");
-    handle.eglSwapBuffers = dlsym(dl_handle, "eglSwapBuffers");
-    handle.eglReleaseThread = dlsym(dl_handle, "eglReleaseThread");
-    handle.eglSwapInterval = dlsym(dl_handle, "eglSwapInterval");
-    handle.eglTerminate = dlsym(dl_handle, "eglTerminate");
-    handle.eglGetCurrentSurface = dlsym(dl_handle, "eglGetCurrentSurface");
+    g_tinygl4angle_handle = dlopen("@rpath/libtinygl4angle.dylib", RTLD_GLOBAL);
+    NSCAssert(g_tinygl4angle_handle, @(dlerror()));
+    handle.eglBindAPI = dlsym(g_tinygl4angle_handle, "eglBindAPI");
+    handle.eglChooseConfig = dlsym(g_tinygl4angle_handle, "eglChooseConfig");
+    handle.eglCreateContext = dlsym(g_tinygl4angle_handle, "eglCreateContext");
+    handle.eglCreateWindowSurface = dlsym(g_tinygl4angle_handle, "eglCreateWindowSurface");
+    handle.eglDestroyContext = dlsym(g_tinygl4angle_handle, "eglDestroyContext");
+    handle.eglDestroySurface = dlsym(g_tinygl4angle_handle, "eglDestroySurface");
+    handle.eglGetConfigAttrib = dlsym(g_tinygl4angle_handle, "eglGetConfigAttrib");
+    handle.eglGetCurrentContext = dlsym(g_tinygl4angle_handle, "eglGetCurrentContext");
+    handle.eglGetDisplay = dlsym(g_tinygl4angle_handle, "eglGetDisplay");
+    handle.eglGetError = dlsym(g_tinygl4angle_handle, "eglGetError");
+    handle.eglGetPlatformDisplay = dlsym(g_tinygl4angle_handle, "eglGetPlatformDisplay");
+    handle.eglInitialize = dlsym(g_tinygl4angle_handle, "eglInitialize");
+    handle.eglMakeCurrent = dlsym(g_tinygl4angle_handle, "eglMakeCurrent");
+    handle.eglSwapBuffers = dlsym(g_tinygl4angle_handle, "eglSwapBuffers");
+    handle.eglReleaseThread = dlsym(g_tinygl4angle_handle, "eglReleaseThread");
+    handle.eglSwapInterval = dlsym(g_tinygl4angle_handle, "eglSwapInterval");
+    handle.eglTerminate = dlsym(g_tinygl4angle_handle, "eglTerminate");
+    handle.eglGetCurrentSurface = dlsym(g_tinygl4angle_handle, "eglGetCurrentSurface");
+    handle.eglGetProcAddress = (PFNEGLGETPROCADDRESSPROC)dlsym(g_tinygl4angle_handle, "eglGetProcAddress");
 }
 
 static bool gl_init() {
@@ -117,31 +120,47 @@ extern void* get_gl4es_116_handle(void);
 
 static void* amethyst_gles_proc_address(const char* name) {
     if (!name) return NULL;
-    return dlsym(RTLD_DEFAULT, name);
+    void* sym = NULL;
+    // 1. Tìm trực tiếp trong ANGLE backend dylib (tránh đụng độ với OpenGL symbol của GL4ES)
+    if (g_tinygl4angle_handle) {
+        sym = dlsym(g_tinygl4angle_handle, name);
+    }
+    // 2. Nếu là extension runtime, gọi eglGetProcAddress từ ANGLE
+    if (!sym && handle.eglGetProcAddress) {
+        sym = (void*)handle.eglGetProcAddress(name);
+    }
+    // 3. Fallback sang RTLD_NEXT như upstream GL4ES cho Apple Darwin
+    if (!sym) {
+        sym = dlsym(RTLD_NEXT, name);
+    }
+    if (!sym) {
+        NSLog(@"[Amethyst] Warning: Failed to resolve GLES proc address for '%s'", name);
+    }
+    return sym;
 }
 
 static void init_gl4es_116_if_needed(void) {
-    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+    static dispatch_once_t once_control;
 
     void* gl4esHandle = get_gl4es_116_handle();
     if (!gl4esHandle) {
         return;
     }
 
-    pthread_once(&once_control, ^{
-        NSLog(@"[Amethyst] Context is CURRENT (thread=%p). Initializing GL4ES 1.1.6...", pthread_self());
+    dispatch_once(&once_control, ^{
+        NSLog(@"[Amethyst] Context is CURRENT. Initializing GL4ES 1.1.6...");
 
         typedef void (*gl4es_set_proc_t)(void *(*)(const char *));
         gl4es_set_proc_t set_proc = (gl4es_set_proc_t)dlsym(gl4esHandle, "set_getprocaddress");
         if (set_proc) {
-            NSLog(@"[Amethyst] Setting GL4ES 1.1.6 proc address resolver via RTLD_DEFAULT...");
+            NSLog(@"[Amethyst] Setting GL4ES 1.1.6 proc address resolver via ANGLE backend (libtinygl4angle)...");
             set_proc(amethyst_gles_proc_address);
         }
 
         typedef void (*gl4es_init_func_t)(void);
         gl4es_init_func_t init_func = (gl4es_init_func_t)dlsym(gl4esHandle, "initialize_gl4es");
         if (init_func) {
-            NSLog(@"[Amethyst] Calling initialize_gl4es() at %p...", init_func);
+            NSLog(@"[Amethyst] Calling initialize_gl4es() from GL4ES 1.1.6 (handle=%p)...", gl4esHandle);
             init_func();
             NSLog(@"[Amethyst] GL4ES 1.1.6 initialized successfully on active context!");
         } else {

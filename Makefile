@@ -369,18 +369,22 @@ dep_gl4es_116:
 		}; \
 		otool -hv $(WORKINGDIR)/libgl4es_116.dylib; \
 		otool -L $(WORKINGDIR)/libgl4es_116.dylib; \
-		nm -gU $(WORKINGDIR)/libgl4es_116.dylib | grep -q "_glBegin" || { \
-			echo "ERROR: Missing required symbol _glBegin in libgl4es_116.dylib"; exit 1; \
+		nm -gU $(WORKINGDIR)/libgl4es_116.dylib > $(WORKINGDIR)/gl4es_116_syms.txt || { \
+			echo "ERROR: nm -gU failed on libgl4es_116.dylib"; rm -f $(WORKINGDIR)/gl4es_116_syms.txt; exit 1; \
 		}; \
-		nm -gU $(WORKINGDIR)/libgl4es_116.dylib | grep -q "_glScissor" || { \
-			echo "ERROR: Missing required symbol _glScissor in libgl4es_116.dylib"; exit 1; \
+		grep -q "_glBegin" $(WORKINGDIR)/gl4es_116_syms.txt || { \
+			echo "ERROR: Missing required symbol _glBegin in libgl4es_116.dylib"; rm -f $(WORKINGDIR)/gl4es_116_syms.txt; exit 1; \
 		}; \
-		nm -gU $(WORKINGDIR)/libgl4es_116.dylib | grep -q "_gl4es_GetProcAddress" || { \
-			echo "ERROR: Missing required symbol _gl4es_GetProcAddress in libgl4es_116.dylib"; exit 1; \
+		grep -q "_glScissor" $(WORKINGDIR)/gl4es_116_syms.txt || { \
+			echo "ERROR: Missing required symbol _glScissor in libgl4es_116.dylib"; rm -f $(WORKINGDIR)/gl4es_116_syms.txt; exit 1; \
 		}; \
-		nm -gU $(WORKINGDIR)/libgl4es_116.dylib | grep -q "_initialize_gl4es" || { \
-			echo "ERROR: Missing required symbol _initialize_gl4es in libgl4es_116.dylib"; exit 1; \
+		grep -q "_gl4es_GetProcAddress" $(WORKINGDIR)/gl4es_116_syms.txt || { \
+			echo "ERROR: Missing required symbol _gl4es_GetProcAddress in libgl4es_116.dylib"; rm -f $(WORKINGDIR)/gl4es_116_syms.txt; exit 1; \
 		}; \
+		grep -q "_initialize_gl4es" $(WORKINGDIR)/gl4es_116_syms.txt || { \
+			echo "ERROR: Missing required symbol _initialize_gl4es in libgl4es_116.dylib"; rm -f $(WORKINGDIR)/gl4es_116_syms.txt; exit 1; \
+		}; \
+		rm -f $(WORKINGDIR)/gl4es_116_syms.txt; \
 		echo "Successfully verified libgl4es_116.dylib Mach-O arm64 and critical symbols (_glBegin, _glScissor, _gl4es_GetProcAddress, _initialize_gl4es)."; \
 	fi
 	mkdir -p $(SOURCEDIR)/Natives/resources/Frameworks
