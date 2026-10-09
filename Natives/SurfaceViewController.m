@@ -32,6 +32,19 @@ int memorystatus_control(uint32_t command, int32_t pid, uint32_t flags, void *bu
 static int currentHotbarSlot = -1;
 static GameSurfaceView* pojavWindow;
 
+static BOOL isRuntimeMenuControl(ControlButton *button) {
+    NSArray *keycodes = button.properties[@"keycodes"];
+    if (![keycodes isKindOfClass:NSArray.class]) {
+        return NO;
+    }
+    for (NSNumber *keycode in keycodes) {
+        if (keycode.intValue == SPECIALBTN_MENU) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 @interface SurfaceViewController ()<UITextFieldDelegate, UIGestureRecognizerDelegate> {
 }
 
@@ -393,6 +406,10 @@ static GameSurfaceView* pojavWindow;
 - (void)updateControlHiddenState:(BOOL)hide {
     for (UIView *view in self.ctrlView.subviews) {
         ControlButton *button = (ControlButton *)view;
+        if (isRuntimeMenuControl(button)) {
+            button.hidden = YES;
+            continue;
+        }
         if (!button.canBeHidden) continue;
         BOOL hidden = hide || !(
             (isGrabbing && [button.properties[@"displayInGame"] boolValue]) ||
@@ -408,22 +425,6 @@ static GameSurfaceView* pojavWindow;
     }
 }
 
-- (void)updateGrabState {
-    // Update cursor position
-    if (isGrabbing == JNI_TRUE) {
-        CGFloat screenScale = self.surfaceView.layer.contentsScale;
-        CallbackBridge_nativeSendCursorPos(ACTION_DOWN, lastVirtualMousePoint.x * screenScale, lastVirtualMousePoint.y * screenScale);
-        virtualMouseFrame.origin.x = self.view.frame.size.width / 2;
-        virtualMouseFrame.origin.y = self.view.frame.size.height / 2;
-        self.mousePointerView.frame = virtualMouseFrame;
-    }
-    self.scrollPanGesture.enabled = !isGrabbing;
-    self.mousePointerView.hidden = isGrabbing || !virtualMouseEnabled;
-    [self setNeedsUpdateOfPrefersPointerLocked];
-
-    // Update buttons visibility
-    [self updateControlHiddenState:NO];
-}
 
 - (void)launchMinecraft {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -446,18 +447,19 @@ static GameSurfaceView* pojavWindow;
     NSString *controlFile = [PLProfiles resolveKeyForCurrentProfile:@"defaultTouchCtrl"];
     [self.ctrlView loadControlFile:controlFile];
 
-    ControlButton *menuButton;
     for (ControlButton *button in self.ctrlView.subviews) {
-        BOOL isSwipeable = [button.properties[@"isSwipeable"] boolValue];
-
         button.canBeHidden = YES;
-        BOOL isMenuButton = NO;
+
+        // The right-edge drawer replaces the on-screen Runtime Menu button.
+        if (isRuntimeMenuControl(button)) {
+            button.hidden = YES;
+            continue;
+        }
+
+        BOOL isSwipeable = [button.properties[@"isSwipeable"] boolValue];
         for (int i = 0; i < 4; i++) {
             int keycodeInt = [button.properties[@"keycodes"][i] intValue];
             button.canBeHidden &= keycodeInt != SPECIALBTN_TOGGLECTRL && keycodeInt != SPECIALBTN_VIRTUALMOUSE;
-            if (keycodeInt == SPECIALBTN_MENU) {
-                menuButton = button;
-            }
         }
 
         [button addTarget:self action:@selector(executebtn_down:) forControlEvents:UIControlEventTouchDown];
@@ -473,20 +475,8 @@ static GameSurfaceView* pojavWindow;
     }
 
     [self updateControlHiddenState:self.toggleHidden];
-
-    if (menuButton) {
-        NSMutableArray *items = [NSMutableArray new];
-        for (int i = 0; i < self.menuArray.count; i++) {
-            UIAction *item = [UIAction actionWithTitle:localize(self.menuArray[i], nil) image:nil identifier:nil
-                handler:^(id action) {[self didSelectMenuItem:i];}];
-            [items addObject:item];
-        }
-        menuButton.menu = [UIMenu menuWithTitle:@"" image:nil identifier:nil
-            options:UIMenuOptionsDisplayInline children:items];
-        menuButton.showsMenuAsPrimaryAction = YES;
-        self.edgeGesture.enabled = NO;
-    }
 }
+
 
 - (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
