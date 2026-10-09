@@ -10,16 +10,8 @@ index 647686a7..314a0114 100644
  patreon: # Replace with a single Patreon username
  open_collective: # Replace with a single Open Collective username
  ko_fi: # Replace with a single Ko-fi username
-diff --git a/.gitignore b/.gitignore
-old mode 100755
-new mode 100644
-diff --git a/.travis.yml b/.travis.yml
-old mode 100755
-new mode 100644
 diff --git a/Android.mk b/Android.mk
-old mode 100755
-new mode 100644
-index e6c5bc6a..810f7e72
+index e6c5bc6a..810f7e72 100755
 --- a/Android.mk
 +++ b/Android.mk
 @@ -62,6 +62,7 @@ LOCAL_SRC_FILES := \
@@ -340,9 +332,7 @@ index 6f5d2a66..a06cb82a 100755
  create_test_GLES(OpenRA 2 openra "0000031249" 20 "638x478+1+1")
  create_test_GLES(GLSL_lighting 2 glsl_lighting "0000505393" 20)
 diff --git a/COMPILE.md b/COMPILE.md
-old mode 100755
-new mode 100644
-index a7d5e3dd..7aa565c6
+index a7d5e3dd..7aa565c6 100755
 --- a/COMPILE.md
 +++ b/COMPILE.md
 @@ -21,6 +21,11 @@ It's better to define the CMake Build type, preferably `RelWithDebInfo`, that de
@@ -754,9 +744,7 @@ index 00000000..7bf87e65
 +	</Project>
 +</CodeBlocks_project_file>
 diff --git a/MEDIA.md b/MEDIA.md
-old mode 100755
-new mode 100644
-index 45f413fd..6b5ce602
+index 45f413fd..6b5ce602 100755
 --- a/MEDIA.md
 +++ b/MEDIA.md
 @@ -12,6 +12,9 @@ Complex OpenGL 1.5 games, like Foobillard++, that uses cascaded display list, li
@@ -844,9 +832,7 @@ index b8252eac..f416bbf1 100755
  See [here](USAGE.md) for all variables and what they do.
  
 diff --git a/USAGE.md b/USAGE.md
-old mode 100755
-new mode 100644
-index 7957d08e..a6334c4c
+index 7957d08e..a6334c4c 100755
 --- a/USAGE.md
 +++ b/USAGE.md
 @@ -1,7 +1,7 @@
@@ -1260,7 +1246,7 @@ index 00000000..312d61b3
 @@ -0,0 +1 @@
 +fix_lintian_error
 diff --git a/debian/rules b/debian/rules
-new file mode 100755
+new file mode 100644
 index 00000000..71bd3b1c
 --- /dev/null
 +++ b/debian/rules
@@ -3762,12 +3748,6 @@ index 18b784d9..58490f54 100644
  #ifdef __VMS
  # ifdef __cplusplus
  #pragma message enable nosimpint
-diff --git a/include/android_debug.h b/include/android_debug.h
-old mode 100755
-new mode 100644
-diff --git a/include/gl4eshint.h b/include/gl4eshint.h
-old mode 100755
-new mode 100644
 diff --git a/include/gl4esinit.h b/include/gl4esinit.h
 index fd91ebc3..79cbb344 100644
 --- a/include/gl4esinit.h
@@ -3808,11 +3788,8 @@ index fd91ebc3..79cbb344 100644
 +#endif
 +
  #endif
-diff --git a/include/khash.h b/include/khash.h
-old mode 100755
-new mode 100644
 diff --git a/media/assaultcube.jpg b/media/assaultcube.jpg
-new file mode 100755
+new file mode 100644
 index 0000000000000000000000000000000000000000..033708abe13c4c445192eaf21466c84c8ad6487b
 GIT binary patch
 literal 185057
@@ -7405,9 +7382,7 @@ index 348349e8..ec493f5b 100755
 -              args.ifdef, args.ifndef)
 +              args.ifdef, args.ifndef))
 diff --git a/spec/template/base/base.j2 b/spec/template/base/base.j2
-old mode 100755
-new mode 100644
-index 6d479507..5661d608
+index 6d479507..5661d608 100755
 --- a/spec/template/base/base.j2
 +++ b/spec/template/base/base.j2
 @@ -3,6 +3,5 @@
@@ -7417,16 +7392,8 @@ index 6d479507..5661d608
 -{% block content %}{% endblock %}
  {% if ifdef %}#endif{% endif %}
  {% if ifndef %}#endif{% endif %}
-diff --git a/spec/template/base/copy_packed_call.j2 b/spec/template/base/copy_packed_call.j2
-old mode 100755
-new mode 100644
-diff --git a/spec/template/base/headers.j2 b/spec/template/base/headers.j2
-old mode 100755
-new mode 100644
 diff --git a/spec/template/base/wrap.c.j2 b/spec/template/base/wrap.c.j2
-old mode 100755
-new mode 100644
-index 53c1220b..26e37a34
+index 53c1220b..26e37a34 100755
 --- a/spec/template/base/wrap.c.j2
 +++ b/spec/template/base/wrap.c.j2
 @@ -12,4 +12,5 @@
@@ -7436,9 +7403,7 @@ index 53c1220b..26e37a34
 +{% block content %}{% endblock %}
  {% endblock %}
 diff --git a/spec/template/base/wrap.h.j2 b/spec/template/base/wrap.h.j2
-old mode 100755
-new mode 100644
-index 9f5887f4..fc11d184
+index 9f5887f4..fc11d184 100755
 --- a/spec/template/base/wrap.h.j2
 +++ b/spec/template/base/wrap.h.j2
 @@ -58,8 +58,8 @@ packed_call_t* glCopyPackedCall(const packed_call_t *packed);
@@ -7452,32 +7417,8 @@ index 9f5887f4..fc11d184
  {% endfor %}
  
  {% endblock %}
-diff --git a/spec/template/eglwrap.c.j2 b/spec/template/eglwrap.c.j2
-old mode 100755
-new mode 100644
-diff --git a/spec/template/gleswrap.c.j2 b/spec/template/gleswrap.c.j2
-old mode 100755
-new mode 100644
-diff --git a/spec/template/glextwrap.c.j2 b/spec/template/glextwrap.c.j2
-old mode 100755
-new mode 100644
-diff --git a/spec/template/glwrap.h.j2 b/spec/template/glwrap.h.j2
-old mode 100755
-new mode 100644
-diff --git a/spec/template/glxfuncs.j2 b/spec/template/glxfuncs.j2
-old mode 100755
-new mode 100644
-diff --git a/spec/yml/gles-1.1.yml b/spec/yml/gles-1.1.yml
-old mode 100755
-new mode 100644
-diff --git a/spec/yml/glext-1.1.yml b/spec/yml/glext-1.1.yml
-old mode 100755
-new mode 100644
-diff --git a/spec/yml/glext-es2-1.1.yml b/spec/yml/glext-es2-1.1.yml
-old mode 100755
-new mode 100644
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 340a3139..33a442a3 100644
+index 340a3139..0bdf0828 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -1,171 +1,171 @@
@@ -7846,16 +7787,19 @@ index 340a3139..33a442a3 100644
  else()
      add_library(GL SHARED ${GL_SRC})
      
-@@ -206,22 +217,47 @@ else()
+@@ -206,22 +217,49 @@ else()
      if(USE_CLOCK)
          target_link_libraries(GL rt)
      endif()
 -    if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
 +    if(${CMAKE_SYSTEM_NAME} MATCHES "iOS" OR ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
          target_link_libraries(GL
++            "-F${CMAKE_SOURCE_DIR}/../Natives/resources/Frameworks"
 +            "-F${CMAKE_SOURCE_DIR}/external"
              "-F../../external"
-             "-framework MetalANGLE"
+-            "-framework MetalANGLE"
++            "-framework libEGL"
++            "-framework libGLESv2"
          )
      endif()
 +    if(USE_ANDROID_LOG)
@@ -7899,16 +7843,8 @@ index 340a3139..33a442a3 100644
 +    endif()
 +endif()
  
-diff --git a/src/agl/agl.c b/src/agl/agl.c
-old mode 100755
-new mode 100644
-diff --git a/src/agl/agl.h b/src/agl/agl.h
-old mode 100755
-new mode 100644
 diff --git a/src/agl/amigaos.c b/src/agl/amigaos.c
-old mode 100755
-new mode 100644
-index 8127db9d..96505335
+index 8127db9d..96505335 100755
 --- a/src/agl/amigaos.c
 +++ b/src/agl/amigaos.c
 @@ -20,13 +20,21 @@
@@ -7982,13 +7918,8 @@ index 8127db9d..96505335
 -}
 \ No newline at end of file
 +}
-diff --git a/src/agl/amigaos.h b/src/agl/amigaos.h
-old mode 100755
-new mode 100644
 diff --git a/src/agl/lookup.c b/src/agl/lookup.c
-old mode 100755
-new mode 100644
-index 7263435b..5ce4b28d
+index 7263435b..5ce4b28d 100755
 --- a/src/agl/lookup.c
 +++ b/src/agl/lookup.c
 @@ -40,4 +40,4 @@ void *gl4es_aglGetProcAddress(const char *name) {
@@ -7997,9 +7928,6 @@ index 7263435b..5ce4b28d
  }
 -void* aglGetProcAddress(const char* name) AliasExport("gl4es_aglGetProcAddress");
 +AliasExport(void*,aglGetProcAddress,,(const char* name));
-diff --git a/src/config.h b/src/config.h
-old mode 100755
-new mode 100644
 diff --git a/src/egl/egl.c b/src/egl/egl.c
 new file mode 100644
 index 00000000..88857fd0
@@ -8410,9 +8338,7 @@ index 00000000..9767e51f
 +AliasExport(__eglMustCastToProperFunctionPointerType, eglGetProcAddress,, (const char *name));
 +
 diff --git a/src/gl/arbconverter.c b/src/gl/arbconverter.c
-old mode 100755
-new mode 100644
-index 40af6dc6..c0a7aa58
+index 40af6dc6..c0a7aa58 100755
 --- a/src/gl/arbconverter.c
 +++ b/src/gl/arbconverter.c
 @@ -13,7 +13,7 @@
@@ -8483,9 +8409,7 @@ index 40af6dc6..c0a7aa58
  		APPEND_OUTPUT("}\n", 2)
  	} while (0);
 diff --git a/src/gl/arbgenerator.c b/src/gl/arbgenerator.c
-old mode 100755
-new mode 100644
-index e9994a2c..229bdad8
+index e9994a2c..229bdad8 100755
 --- a/src/gl/arbgenerator.c
 +++ b/src/gl/arbgenerator.c
 @@ -50,14 +50,14 @@ void generateVariablePre(sCurStatus *curStatusPtr, int vertex, char **error_msg,
@@ -8536,9 +8460,7 @@ index e9994a2c..229bdad8
  		APPEND_OUTPUT(")", 1)
  		PUSH_POSTSAT(0)
 diff --git a/src/gl/arbhelper.h b/src/gl/arbhelper.h
-old mode 100755
-new mode 100644
-index 9e3db6f2..e9f7d2d5
+index 9e3db6f2..e9f7d2d5 100755
 --- a/src/gl/arbhelper.h
 +++ b/src/gl/arbhelper.h
 @@ -21,11 +21,11 @@
@@ -8557,9 +8479,7 @@ index 9e3db6f2..e9f7d2d5
  
  #ifdef MAX_TEX
 diff --git a/src/gl/arbparser.c b/src/gl/arbparser.c
-old mode 100755
-new mode 100644
-index 96372999..d43bc1b1
+index 96372999..d43bc1b1 100755
 --- a/src/gl/arbparser.c
 +++ b/src/gl/arbparser.c
 @@ -7,12 +7,18 @@
@@ -9615,9 +9535,7 @@ index 0e0aaeab..84adedda 100644
  
  #endif // _GL4ES_ARBPARSER_H_
 diff --git a/src/gl/array.c b/src/gl/array.c
-old mode 100755
-new mode 100644
-index 3cfe7c43..634ab557
+index 3cfe7c43..634ab557 100755
 --- a/src/gl/array.c
 +++ b/src/gl/array.c
 @@ -170,14 +170,14 @@ GLvoid *copy_gl_array_convert(const GLvoid *src,
@@ -9731,9 +9649,6 @@ index 3cfe7c43..634ab557
  
      GL_TYPE_SWITCH(src, ptr, p->type,
          for (int i = 0; i < p->size; i++) {
-diff --git a/src/gl/array.h b/src/gl/array.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/attributes.h b/src/gl/attributes.h
 index cad4da90..9ed1ce62 100755
 --- a/src/gl/attributes.h
@@ -9928,9 +9843,7 @@ index cad4da90..9ed1ce62 100755
  #ifdef __GNUC__
   #ifdef __arm__
 diff --git a/src/gl/blend.c b/src/gl/blend.c
-old mode 100755
-new mode 100644
-index 6a5579e5..fc0f9f13
+index 6a5579e5..fc0f9f13 100755
 --- a/src/gl/blend.c
 +++ b/src/gl/blend.c
 @@ -8,24 +8,80 @@
@@ -10359,12 +10272,6 @@ index e5aa5532..eeb2685c 100644
 +void APIENTRY_GL4ES gl4es_glBlendEquation(GLenum mode);
  
  #endif //_GL4ES_BLEND_H_
-diff --git a/src/gl/blit.c b/src/gl/blit.c
-old mode 100755
-new mode 100644
-diff --git a/src/gl/blit.h b/src/gl/blit.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/buffers.c b/src/gl/buffers.c
 index f4a0e167..4ea062cb 100644
 --- a/src/gl/buffers.c
@@ -11044,9 +10951,7 @@ index f4a0e167..4ea062cb 100644
 +AliasExport(GLboolean,glIsVertexArray,,(GLuint array));
  
 diff --git a/src/gl/buffers.h b/src/gl/buffers.h
-old mode 100755
-new mode 100644
-index dc8c5e1c..f23d288f
+index dc8c5e1c..f23d288f 100755
 --- a/src/gl/buffers.h
 +++ b/src/gl/buffers.h
 @@ -22,48 +22,62 @@ typedef struct {
@@ -11230,9 +11135,7 @@ index b1bdda8a..23810bc2 100644
  
  #endif // _GL4ES_BUILD_INFO_H_
 diff --git a/src/gl/const.h b/src/gl/const.h
-old mode 100755
-new mode 100644
-index a40395d8..fc6a1bd2
+index a40395d8..fc6a1bd2 100755
 --- a/src/gl/const.h
 +++ b/src/gl/const.h
 @@ -157,6 +157,7 @@
@@ -11294,9 +11197,7 @@ index a40395d8..fc6a1bd2
 +
  #endif // _GL4ES_CONST_H_
 diff --git a/src/gl/debug.c b/src/gl/debug.c
-old mode 100755
-new mode 100644
-index f4e5e3c8..db465dea
+index f4e5e3c8..db465dea 100755
 --- a/src/gl/debug.c
 +++ b/src/gl/debug.c
 @@ -118,8 +118,13 @@ const char* PrintEnum(GLenum what) {
@@ -11314,13 +11215,8 @@ index f4e5e3c8..db465dea
          // framebuffer
          p(GL_COLOR_ATTACHMENT0);
          p(GL_COLOR_ATTACHMENT1);
-diff --git a/src/gl/debug.h b/src/gl/debug.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/decompress.c b/src/gl/decompress.c
-old mode 100755
-new mode 100644
-index ab5759ab..eabd6893
+index ab5759ab..eabd6893 100755
 --- a/src/gl/decompress.c
 +++ b/src/gl/decompress.c
 @@ -117,10 +117,6 @@ static void DecompressBlockDXT1Internal (const uint8_t* block,
@@ -11351,9 +11247,7 @@ index ab5759ab..eabd6893
  					*simpleAlpha = 1;
  				else if(alpha<0xff)
 diff --git a/src/gl/decompress.h b/src/gl/decompress.h
-old mode 100755
-new mode 100644
-index e9e5da83..b1463c93
+index e9e5da83..b1463c93 100755
 --- a/src/gl/decompress.h
 +++ b/src/gl/decompress.h
 @@ -1,6 +1,8 @@
@@ -11366,9 +11260,7 @@ index e9e5da83..b1463c93
  	const uint8_t* blockStorage,
  	int transparent0, int* simpleAlpha, int *complexAlpha,
 diff --git a/src/gl/depth.c b/src/gl/depth.c
-old mode 100755
-new mode 100644
-index bded9aca..84298216
+index bded9aca..84298216 100755
 --- a/src/gl/depth.c
 +++ b/src/gl/depth.c
 @@ -4,7 +4,7 @@
@@ -11435,9 +11327,7 @@ index bded9aca..84298216
 +AliasExport(void,glClearDepthf,,(GLclampf depth));
  
 diff --git a/src/gl/depth.h b/src/gl/depth.h
-old mode 100755
-new mode 100644
-index 892a7cb2..e82b53ea
+index 892a7cb2..e82b53ea 100755
 --- a/src/gl/depth.h
 +++ b/src/gl/depth.h
 @@ -3,9 +3,9 @@
@@ -12184,9 +12074,7 @@ index 10f40a2f..fbe0c4c3 100755
  #undef text
  #undef texc
 diff --git a/src/gl/directstate.h b/src/gl/directstate.h
-old mode 100755
-new mode 100644
-index cbbc94d3..97c7e42e
+index cbbc94d3..97c7e42e 100755
 --- a/src/gl/directstate.h
 +++ b/src/gl/directstate.h
 @@ -3,124 +3,124 @@
@@ -12423,9 +12311,7 @@ index cbbc94d3..97c7e42e
  
  #endif // _GL4ES_DIRECTSTATE_H_
 diff --git a/src/gl/drawing.c b/src/gl/drawing.c
-old mode 100755
-new mode 100644
-index ddfab1e1..9844ca10
+index ddfab1e1..9844ca10 100755
 --- a/src/gl/drawing.c
 +++ b/src/gl/drawing.c
 @@ -10,6 +10,13 @@
@@ -12904,9 +12790,7 @@ index ddfab1e1..9844ca10
 +AliasExport(void,glDrawElementsInstancedBaseVertex,,(GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei primcount, GLint basevertex));
 +AliasExport(void,glDrawElementsInstancedBaseVertex,ARB,(GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei primcount, GLint basevertex));
 diff --git a/src/gl/enable.c b/src/gl/enable.c
-old mode 100755
-new mode 100644
-index 7f0ba304..d6455688
+index 7f0ba304..d6455688 100755
 --- a/src/gl/enable.c
 +++ b/src/gl/enable.c
 @@ -65,7 +65,7 @@ void change_vao_texcoord(int tmu, bool enable)
@@ -13038,9 +12922,7 @@ index 8867379c..934ccc43 100644
          default:
              return true;
 diff --git a/src/gl/eval.c b/src/gl/eval.c
-old mode 100755
-new mode 100644
-index 61386166..e53c5004
+index 61386166..e53c5004 100755
 --- a/src/gl/eval.c
 +++ b/src/gl/eval.c
 @@ -64,7 +64,7 @@ static inline map_state_t **get_map_pointer(GLenum target) {
@@ -13188,9 +13070,7 @@ index 61386166..e53c5004
 +AliasExport(void,glGetMapfv,,(GLenum target, GLenum query, GLfloat *v));
 +AliasExport(void,glGetMapiv,,(GLenum target, GLenum query, GLint *v));
 diff --git a/src/gl/eval.h b/src/gl/eval.h
-old mode 100755
-new mode 100644
-index c928434b..c767893d
+index c928434b..c767893d 100755
 --- a/src/gl/eval.h
 +++ b/src/gl/eval.h
 @@ -4,27 +4,27 @@
@@ -13241,9 +13121,7 @@ index c928434b..c767893d
  typedef struct {
      GLenum type;
 diff --git a/src/gl/face.c b/src/gl/face.c
-old mode 100755
-new mode 100644
-index 170a8ffb..4356fdf1
+index 170a8ffb..4356fdf1 100755
 --- a/src/gl/face.c
 +++ b/src/gl/face.c
 @@ -4,7 +4,7 @@
@@ -13273,9 +13151,7 @@ index 170a8ffb..4356fdf1
 +AliasExport(void,glCullFace,,(GLenum mode));
 +AliasExport(void,glFrontFace,,(GLenum mode));
 diff --git a/src/gl/face.h b/src/gl/face.h
-old mode 100755
-new mode 100644
-index 62c6bc98..d7737b69
+index 62c6bc98..d7737b69 100755
 --- a/src/gl/face.h
 +++ b/src/gl/face.h
 @@ -3,7 +3,7 @@
@@ -13289,9 +13165,7 @@ index 62c6bc98..d7737b69
  
  #endif // _GL4ES_FACE_H_
 diff --git a/src/gl/fog.c b/src/gl/fog.c
-old mode 100755
-new mode 100644
-index 8aa7debc..75144a16
+index 8aa7debc..75144a16 100755
 --- a/src/gl/fog.c
 +++ b/src/gl/fog.c
 @@ -8,7 +8,7 @@
@@ -13394,9 +13268,7 @@ index 8aa7debc..75144a16
 +AliasExport(void,glFogCoordfv,EXT,(const GLfloat *coord));
 \ No newline at end of file
 diff --git a/src/gl/fog.h b/src/gl/fog.h
-old mode 100755
-new mode 100644
-index 9a30c9a6..c68aa545
+index 9a30c9a6..c68aa545 100755
 --- a/src/gl/fog.h
 +++ b/src/gl/fog.h
 @@ -14,10 +14,10 @@ typedef struct {
@@ -13415,9 +13287,7 @@ index 9a30c9a6..c68aa545
  
  #endif // _GL4ES_FOG_H_
 diff --git a/src/gl/fpe.c b/src/gl/fpe.c
-old mode 100755
-new mode 100644
-index e674d880..0bf9cca4
+index e674d880..0bf9cca4 100755
 --- a/src/gl/fpe.c
 +++ b/src/gl/fpe.c
 @@ -36,9 +36,9 @@ void fpe_Dispose(glstate_t *glstate) {
@@ -14009,9 +13879,7 @@ index e674d880..0bf9cca4
      if(strncmp(name, vtx_progenv_arr, strlen(vtx_progenv_arr))==0) {
          int l = strlen(vtx_progenv_arr);
 diff --git a/src/gl/fpe.h b/src/gl/fpe.h
-old mode 100755
-new mode 100644
-index e4ceb9c2..5682f4ad
+index e4ceb9c2..5682f4ad 100755
 --- a/src/gl/fpe.h
 +++ b/src/gl/fpe.h
 @@ -111,6 +111,28 @@
@@ -14153,12 +14021,6 @@ index e4ceb9c2..5682f4ad
  
  void builtin_Init(program_t *glprogram);
  int builtin_CheckUniform(program_t *glprogram, char* name, GLint id, int size);
-diff --git a/src/gl/fpe_cache.c b/src/gl/fpe_cache.c
-old mode 100755
-new mode 100644
-diff --git a/src/gl/fpe_cache.h b/src/gl/fpe_cache.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/fpe_shader.c b/src/gl/fpe_shader.c
 index 2526b6a0..bef74a06 100755
 --- a/src/gl/fpe_shader.c
@@ -14999,9 +14861,7 @@ index 2526b6a0..bef74a06 100755
          ShadAppend("}");
      }
 diff --git a/src/gl/fpe_shader.h b/src/gl/fpe_shader.h
-old mode 100755
-new mode 100644
-index d5825a15..9c07f3be
+index d5825a15..9c07f3be 100755
 --- a/src/gl/fpe_shader.h
 +++ b/src/gl/fpe_shader.h
 @@ -8,7 +8,7 @@ extern const char* fpeshader_signature;
@@ -15014,9 +14874,7 @@ index d5825a15..9c07f3be
  
  #endif // _GL4ES_FPE_SHADER_H_
 diff --git a/src/gl/framebuffers.c b/src/gl/framebuffers.c
-old mode 100755
-new mode 100644
-index ec05e058..b585f3ba
+index ec05e058..b585f3ba 100755
 --- a/src/gl/framebuffers.c
 +++ b/src/gl/framebuffers.c
 @@ -1,8 +1,5 @@
@@ -15690,9 +15548,7 @@ index ec05e058..b585f3ba
 +AliasExport(void,glClearNamedFramebufferfv,EXT,(GLuint framebuffer, GLenum buffer, GLint drawbuffer, const GLfloat *value));
 +AliasExport(void,glClearNamedFramebufferfi,EXT,(GLuint framebuffer, GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil));
 diff --git a/src/gl/framebuffers.h b/src/gl/framebuffers.h
-old mode 100755
-new mode 100644
-index e952890b..a917658a
+index e952890b..a917658a 100755
 --- a/src/gl/framebuffers.h
 +++ b/src/gl/framebuffers.h
 @@ -3,41 +3,43 @@
@@ -15775,9 +15631,7 @@ index e952890b..a917658a
  // In case of LIBGL_FB=2, let's create an FBO for everything, that is then blitted just before the SwapBuffer
  void createMainFBO(int width, int height);
 diff --git a/src/gl/getter.c b/src/gl/getter.c
-old mode 100755
-new mode 100644
-index b07b0f27..dc500196
+index b07b0f27..dc500196 100755
 --- a/src/gl/getter.c
 +++ b/src/gl/getter.c
 @@ -16,24 +16,31 @@
@@ -16987,9 +16841,7 @@ index 81b47612..1fd5eec6 100644
  {
  		show_fps();
 diff --git a/src/gl/gl4es.h b/src/gl/gl4es.h
-old mode 100755
-new mode 100644
-index 77bb804c..0d748e3d
+index 77bb804c..0d748e3d 100755
 --- a/src/gl/gl4es.h
 +++ b/src/gl/gl4es.h
 @@ -11,7 +11,7 @@
@@ -17228,9 +17080,7 @@ index 77bb804c..0d748e3d
  
  #endif // _GL4ES_GL4ES_H_
 diff --git a/src/gl/gl_lookup.c b/src/gl/gl_lookup.c
-old mode 100755
-new mode 100644
-index b594ca50..0bbd4a6d
+index b594ca50..0bbd4a6d 100755
 --- a/src/gl/gl_lookup.c
 +++ b/src/gl/gl_lookup.c
 @@ -10,6 +10,8 @@
@@ -17329,9 +17179,7 @@ index b594ca50..0bbd4a6d
      if (!globals4es.silentstub) LOGD("GL4ES GetProcAddress: %s not found.\n", name);
      return NULL;
 diff --git a/src/gl/gl_lookup.h b/src/gl/gl_lookup.h
-old mode 100755
-new mode 100644
-index b6cd5b60..4304eebc
+index b6cd5b60..4304eebc 100755
 --- a/src/gl/gl_lookup.h
 +++ b/src/gl/gl_lookup.h
 @@ -1,6 +1,8 @@
@@ -17352,13 +17200,8 @@ index b6cd5b60..4304eebc
  
  #endif //_GL_LOOKUP_H_
 \ No newline at end of file
-diff --git a/src/gl/glcase.h b/src/gl/glcase.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/gles.h b/src/gl/gles.h
-old mode 100755
-new mode 100644
-index 03d6853c..4065019a
+index 03d6853c..4065019a 100755
 --- a/src/gl/gles.h
 +++ b/src/gl/gles.h
 @@ -2,6 +2,7 @@
@@ -17370,9 +17213,7 @@ index 03d6853c..4065019a
  // Define for GLES 1.1
  typedef void             GLvoid;
 diff --git a/src/gl/glesfuncs.inc b/src/gl/glesfuncs.inc
-old mode 100755
-new mode 100644
-index 321e25fe..87525a39
+index 321e25fe..87525a39 100755
 --- a/src/gl/glesfuncs.inc
 +++ b/src/gl/glesfuncs.inc
 @@ -236,5 +236,6 @@ _EX(glVertexAttrib3fv);
@@ -17383,9 +17224,7 @@ index 321e25fe..87525a39
  _EX(glVertexPointer);
  _EX(glViewport);
 diff --git a/src/gl/glstate.c b/src/gl/glstate.c
-old mode 100755
-new mode 100644
-index 299b6aa4..1a642e48
+index 299b6aa4..1a642e48 100755
 --- a/src/gl/glstate.c
 +++ b/src/gl/glstate.c
 @@ -84,13 +84,14 @@ void* NewGLState(void* shared_glstate, int es2only) {
@@ -17506,9 +17345,7 @@ index 299b6aa4..1a642e48
 \ No newline at end of file
 +}
 diff --git a/src/gl/glstate.h b/src/gl/glstate.h
-old mode 100755
-new mode 100644
-index 66fa867e..62c3ccf4
+index 66fa867e..62c3ccf4 100755
 --- a/src/gl/glstate.h
 +++ b/src/gl/glstate.h
 @@ -48,10 +48,9 @@ typedef struct glstate_s {
@@ -17557,9 +17394,7 @@ index 66fa867e..62c3ccf4
  
  
 diff --git a/src/gl/hint.c b/src/gl/hint.c
-old mode 100755
-new mode 100644
-index effb8dce..feef2e30
+index effb8dce..feef2e30 100755
 --- a/src/gl/hint.c
 +++ b/src/gl/hint.c
 @@ -10,7 +10,7 @@
@@ -17580,9 +17415,7 @@ index effb8dce..feef2e30
 +AliasExport(void,glHint,,(GLenum pname, GLenum mode));
 \ No newline at end of file
 diff --git a/src/gl/hint.h b/src/gl/hint.h
-old mode 100755
-new mode 100644
-index 32680491..7cc6573f
+index 32680491..7cc6573f 100755
 --- a/src/gl/hint.h
 +++ b/src/gl/hint.h
 @@ -3,6 +3,6 @@
@@ -18091,9 +17924,7 @@ index 9410e66d..0adba4ee 100755
 +#pragma const_seg()
 +#endif
 diff --git a/src/gl/init.h b/src/gl/init.h
-old mode 100755
-new mode 100644
-index fef04bd4..a4007854
+index fef04bd4..a4007854 100755
 --- a/src/gl/init.h
 +++ b/src/gl/init.h
 @@ -56,6 +56,7 @@ typedef struct _globals4es {
@@ -18120,9 +17951,7 @@ index fef04bd4..a4007854
   char drmcard[50];
   #endif
 diff --git a/src/gl/light.c b/src/gl/light.c
-old mode 100755
-new mode 100644
-index 54aeb4f9..00527649
+index 54aeb4f9..00527649 100755
 --- a/src/gl/light.c
 +++ b/src/gl/light.c
 @@ -6,7 +6,7 @@
@@ -18213,9 +18042,7 @@ index 54aeb4f9..00527649
 +AliasExport(void,glMaterialf,,(GLenum face, GLenum pname, GLfloat param));
 +AliasExport(void,glColorMaterial,,(GLenum face, GLenum mode));
 diff --git a/src/gl/light.h b/src/gl/light.h
-old mode 100755
-new mode 100644
-index 180b650e..b6d226f9
+index 180b650e..b6d226f9 100755
 --- a/src/gl/light.h
 +++ b/src/gl/light.h
 @@ -38,16 +38,16 @@ typedef struct {
@@ -18245,9 +18072,7 @@ index 180b650e..b6d226f9
  
  #endif // _GL4ES_LIGHT_H_
 diff --git a/src/gl/line.c b/src/gl/line.c
-old mode 100755
-new mode 100644
-index fa662805..52b223c1
+index fa662805..52b223c1 100755
 --- a/src/gl/line.c
 +++ b/src/gl/line.c
 @@ -15,7 +15,7 @@
@@ -18269,9 +18094,7 @@ index fa662805..52b223c1
  void bind_stipple_tex() {
      gl4es_glBindTexture(GL_TEXTURE_2D, glstate->linestipple.texture);
 diff --git a/src/gl/line.h b/src/gl/line.h
-old mode 100755
-new mode 100644
-index 49fd951f..b5413cab
+index 49fd951f..b5413cab 100755
 --- a/src/gl/line.h
 +++ b/src/gl/line.h
 @@ -4,7 +4,7 @@
@@ -18284,9 +18107,7 @@ index 49fd951f..b5413cab
  void bind_stipple_tex();
  
 diff --git a/src/gl/list.c b/src/gl/list.c
-old mode 100755
-new mode 100644
-index 7430a6ac..63d4d0cc
+index 7430a6ac..63d4d0cc 100755
 --- a/src/gl/list.c
 +++ b/src/gl/list.c
 @@ -6,6 +6,7 @@
@@ -18338,9 +18159,6 @@ index 7430a6ac..63d4d0cc
      }
  }
  
-diff --git a/src/gl/list.h b/src/gl/list.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/listdraw.c b/src/gl/listdraw.c
 index 868a184a..d616b3b8 100755
 --- a/src/gl/listdraw.c
@@ -18559,13 +18377,8 @@ index 868a184a..d616b3b8 100755
              gl4es_glMatrixMode(GL_TEXTURE);
              gl4es_glPopMatrix();
              gl4es_glMatrixMode(matmode);
-diff --git a/src/gl/listrl.c b/src/gl/listrl.c
-old mode 100755
-new mode 100644
 diff --git a/src/gl/loader.c b/src/gl/loader.c
-old mode 100755
-new mode 100644
-index a8839cbc..52b4eca8
+index a8839cbc..26610f71 100755
 --- a/src/gl/loader.c
 +++ b/src/gl/loader.c
 @@ -1,6 +1,6 @@
@@ -18683,8 +18496,7 @@ index a8839cbc..52b4eca8
      if (gles_getProcAddress)
          return gles_getProcAddress(name);
  #ifdef AMIGAOS4
-     return os4GetProcAddress(name);
- #elif defined __EMSCRIPTEN__
+@@ -171,9 +201,26 @@ void *proc_address(void *lib, const char *name) {
      void *emscripten_GetProcAddress(const char *name);
      return emscripten_GetProcAddress(name);
  #elif defined __APPLE__
@@ -18692,14 +18504,30 @@ index a8839cbc..52b4eca8
 -    // remove if it not needed
 -    return dlsym((void*)(~(uintptr_t)0), name);
 +    void *sym = NULL;
-+    if (lib) sym = dlsym(lib, name);
 +    if (!sym) sym = dlsym(((void*)-2), name);
++    if (!sym && lib && lib != (void*)(~(uintptr_t)0)) sym = dlsym(lib, name);
 +    if (!sym) sym = dlsym((void*)(~(uintptr_t)0), name);
++    if (!sym) {
++        static void *s_egl = NULL;
++        static void *s_gles = NULL;
++        static void* (*s_eglGetProcAddress)(const char*) = NULL;
++        if (!s_egl) s_egl = dlopen("@rpath/libEGL.framework/libEGL", RTLD_GLOBAL | RTLD_LAZY);
++        if (s_egl) {
++            sym = dlsym(s_egl, name);
++            if (!s_eglGetProcAddress) s_eglGetProcAddress = (void*(*)(const char*))dlsym(s_egl, "eglGetProcAddress");
++        }
++        if (!sym && s_eglGetProcAddress) sym = s_eglGetProcAddress(name);
++        if (!sym) {
++            if (!s_gles) s_gles = dlopen("@rpath/libGLESv2.framework/libGLESv2", RTLD_GLOBAL | RTLD_LAZY);
++            if (s_gles) sym = dlsym(s_gles, name);
++        }
++    }
 +    return sym;
+ #elif !defined NO_LOADER
+     return dlsym(lib, name);
+ #else
 diff --git a/src/gl/loader.h b/src/gl/loader.h
-old mode 100755
-new mode 100644
-index af0cc733..d4cf8367
+index af0cc733..202f8757 100755
 --- a/src/gl/loader.h
 +++ b/src/gl/loader.h
 @@ -49,6 +49,11 @@ typedef EGLBoolean (*eglUnlockSurfaceKHR_PTR)(EGLDisplay display, EGLSurface sur
@@ -18776,10 +18604,17 @@ index af0cc733..d4cf8367
              noerrorShim();							\
              return (nam##_RETURN)0;                 \
          }                                           \
+@@ -180,7 +201,7 @@ extern void *gles, *egl, *bcm_host, *vcos, *gbm, *drm;
+ 
+ #define LOAD_GBM(name) LOAD_LIB(gbm, name)
+ 
+-#if defined(AMIGAOS4) || defined(NOEGL) || defined(__EMSCRIPTEN__)
++#if defined(AMIGAOS4) || defined(NOEGL) || defined(__EMSCRIPTEN__) || defined(__APPLE__)
+ #define LOAD_GLES_OES(name) \
+     DEFINE_RAW(gles, name); \
+     { \
 diff --git a/src/gl/logs.c b/src/gl/logs.c
-old mode 100755
-new mode 100644
-index b4071565..0963da17
+index b4071565..0963da17 100755
 --- a/src/gl/logs.c
 +++ b/src/gl/logs.c
 @@ -1,6 +1,9 @@
@@ -18825,9 +18660,7 @@ index b4071565..0963da17
  	#else
  	vprintf(fmt,args);
 diff --git a/src/gl/logs.h b/src/gl/logs.h
-old mode 100755
-new mode 100644
-index 36352015..08e61240
+index 36352015..08e61240 100755
 --- a/src/gl/logs.h
 +++ b/src/gl/logs.h
 @@ -3,10 +3,11 @@
@@ -18973,9 +18806,7 @@ index 01b40ba4..f5b0257a 100644
                      DCN(0, j) = vs * DCN(0, j) + v * DCN(0, j + 1);
                  }
 diff --git a/src/gl/matrix.c b/src/gl/matrix.c
-old mode 100755
-new mode 100644
-index 3204f958..e9990d61
+index 3204f958..e9990d61 100755
 --- a/src/gl/matrix.c
 +++ b/src/gl/matrix.c
 @@ -108,7 +108,7 @@ void set_fpe_textureidentity() {
@@ -19104,9 +18935,7 @@ index 3204f958..e9990d61
 +AliasExport(void,glOrthof,,(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal));
 +AliasExport(void,glFrustumf,,(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal));
 diff --git a/src/gl/matrix.h b/src/gl/matrix.h
-old mode 100755
-new mode 100644
-index 6e2f84c1..43596d61
+index 6e2f84c1..43596d61 100755
 --- a/src/gl/matrix.h
 +++ b/src/gl/matrix.h
 @@ -7,17 +7,17 @@
@@ -19138,16 +18967,8 @@ index 6e2f84c1..43596d61
  
  static inline GLfloat* getTexMat(int tmu) {
  	return glstate->texture_matrix[tmu]->stack+glstate->texture_matrix[tmu]->top*16;
-diff --git a/src/gl/matvec.c b/src/gl/matvec.c
-old mode 100755
-new mode 100644
-diff --git a/src/gl/matvec.h b/src/gl/matvec.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/oldprogram.c b/src/gl/oldprogram.c
-old mode 100755
-new mode 100644
-index 519f8087..a2ff2b71
+index 519f8087..a2ff2b71 100755
 --- a/src/gl/oldprogram.c
 +++ b/src/gl/oldprogram.c
 @@ -81,49 +81,49 @@ oldprogram_t* getOldProgram(GLuint program)
@@ -19499,9 +19320,7 @@ index 519f8087..a2ff2b71
 +AliasExport(void,glProgramLocalParameters4fvEXT,,(GLenum target, GLuint index, GLsizei count, const GLfloat *params));
 \ No newline at end of file
 diff --git a/src/gl/oldprogram.h b/src/gl/oldprogram.h
-old mode 100755
-new mode 100644
-index 7e280b53..1651424a
+index 7e280b53..1651424a 100755
 --- a/src/gl/oldprogram.h
 +++ b/src/gl/oldprogram.h
 @@ -37,43 +37,43 @@ oldprogram_t* getOldProgram(GLuint id);
@@ -19575,9 +19394,7 @@ index 7e280b53..1651424a
  #endif //_GL4ES_OLD_PROGRAM_H_
 \ No newline at end of file
 diff --git a/src/gl/pixel.c b/src/gl/pixel.c
-old mode 100755
-new mode 100644
-index 1384306f..34f00db6
+index 1384306f..34f00db6 100755
 --- a/src/gl/pixel.c
 +++ b/src/gl/pixel.c
 @@ -230,37 +230,49 @@ bool remap_pixel(const GLvoid *src, GLvoid *dst,
@@ -19890,13 +19707,8 @@ index 1384306f..34f00db6
 -}
 \ No newline at end of file
 +}
-diff --git a/src/gl/pixel.h b/src/gl/pixel.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/planes.c b/src/gl/planes.c
-old mode 100755
-new mode 100644
-index 10ff3757..d04eed89
+index 10ff3757..d04eed89 100755
 --- a/src/gl/planes.c
 +++ b/src/gl/planes.c
 @@ -5,7 +5,7 @@
@@ -19917,9 +19729,7 @@ index 10ff3757..d04eed89
 +AliasExport(void,glClipPlanef,,(GLenum pname, const GLfloat* params));
 \ No newline at end of file
 diff --git a/src/gl/planes.h b/src/gl/planes.h
-old mode 100755
-new mode 100644
-index 5b7e3427..f234e54e
+index 5b7e3427..f234e54e 100755
 --- a/src/gl/planes.h
 +++ b/src/gl/planes.h
 @@ -3,6 +3,6 @@
@@ -19931,9 +19741,7 @@ index 5b7e3427..f234e54e
  
  #endif // _GL4ES_PLANES_H_
 diff --git a/src/gl/pointsprite.c b/src/gl/pointsprite.c
-old mode 100755
-new mode 100644
-index 1d61a697..0b3c1cf3
+index 1d61a697..0b3c1cf3 100755
 --- a/src/gl/pointsprite.c
 +++ b/src/gl/pointsprite.c
 @@ -7,30 +7,30 @@
@@ -19999,9 +19807,7 @@ index 1d61a697..0b3c1cf3
 -void glPointSize(GLfloat size) AliasExport("gl4es_glPointSize");
 +AliasExport(void,glPointSize,,(GLfloat size));
 diff --git a/src/gl/pointsprite.h b/src/gl/pointsprite.h
-old mode 100755
-new mode 100644
-index e01fa144..3e5e7475
+index e01fa144..3e5e7475 100755
 --- a/src/gl/pointsprite.h
 +++ b/src/gl/pointsprite.h
 @@ -12,11 +12,11 @@ typedef struct {
@@ -20485,9 +20291,7 @@ index 7e00292f..c71bb2b6 100644
 +AliasExport(GLint,glGetUniformLocation,ARB,(GLhandleARB programObj, const GLcharARB *name));
 +AliasExport(GLvoid,glGetActiveUniform,ARB,(GLhandleARB programObj, GLuint index, GLsizei maxLength, GLsizei *length, GLint *size, GLenum *type, GLcharARB *name));
 diff --git a/src/gl/program.h b/src/gl/program.h
-old mode 100755
-new mode 100644
-index 27eeeb0c..e9e90741
+index 27eeeb0c..e9e90741 100755
 --- a/src/gl/program.h
 +++ b/src/gl/program.h
 @@ -253,6 +253,8 @@ typedef struct {
@@ -20622,9 +20426,7 @@ index 27eeeb0c..e9e90741
  
  #endif // _GL4ES_PROGRAM_H_
 diff --git a/src/gl/queries.c b/src/gl/queries.c
-old mode 100755
-new mode 100644
-index 8538e330..e001e2a1
+index 8538e330..e001e2a1 100755
 --- a/src/gl/queries.c
 +++ b/src/gl/queries.c
 @@ -1,16 +1,92 @@
@@ -21101,9 +20903,7 @@ index 8538e330..e001e2a1
 +AliasExport(void,glQueryCounter,ARB,(GLuint id, GLenum target));
 \ No newline at end of file
 diff --git a/src/gl/queries.h b/src/gl/queries.h
-old mode 100755
-new mode 100644
-index b205aa78..a980a895
+index b205aa78..a980a895 100755
 --- a/src/gl/queries.h
 +++ b/src/gl/queries.h
 @@ -4,21 +4,18 @@
@@ -21141,9 +20941,7 @@ index b205aa78..a980a895
  
  #endif // _GL4ES_QUERIES_H_
 diff --git a/src/gl/raster.c b/src/gl/raster.c
-old mode 100755
-new mode 100644
-index 9e37c6df..197dc836
+index 9e37c6df..197dc836 100755
 --- a/src/gl/raster.c
 +++ b/src/gl/raster.c
 @@ -11,36 +11,40 @@
@@ -21484,9 +21282,7 @@ index 9e37c6df..197dc836
 +AliasExport(void,glGetPixelMapuiv,,(GLenum map, GLuint *data));
 +AliasExport(void,glGetPixelMapusv,,(GLenum map, GLushort *data));
 diff --git a/src/gl/raster.h b/src/gl/raster.h
-old mode 100755
-new mode 100644
-index 12bba8b9..f4c9c40c
+index 12bba8b9..f4c9c40c 100755
 --- a/src/gl/raster.h
 +++ b/src/gl/raster.h
 @@ -26,25 +26,25 @@ typedef struct {
@@ -21529,9 +21325,7 @@ index 12bba8b9..f4c9c40c
  void render_raster_list(rasterlist_t* raster);
  
 diff --git a/src/gl/render.c b/src/gl/render.c
-old mode 100755
-new mode 100644
-index db3c5523..74e9f119
+index db3c5523..74e9f119 100755
 --- a/src/gl/render.c
 +++ b/src/gl/render.c
 @@ -39,7 +39,7 @@ void push_hit() {
@@ -21637,9 +21431,7 @@ index db3c5523..74e9f119
 +AliasExport(void,glLoadName,,(GLuint name));
 +AliasExport(void,glSelectBuffer,,(GLsizei size, GLuint *buffer));
 diff --git a/src/gl/render.h b/src/gl/render.h
-old mode 100755
-new mode 100644
-index 0c6d096f..8291d81f
+index 0c6d096f..8291d81f 100755
 --- a/src/gl/render.h
 +++ b/src/gl/render.h
 @@ -4,12 +4,12 @@
@@ -22124,9 +21916,7 @@ index 00000000..bb3e9cd4
 +#endif //_GL4ES_SAMPLERS_H_
 \ No newline at end of file
 diff --git a/src/gl/shader.c b/src/gl/shader.c
-old mode 100755
-new mode 100644
-index 9be0187a..3f7c7448
+index 9be0187a..3f7c7448 100755
 --- a/src/gl/shader.c
 +++ b/src/gl/shader.c
 @@ -17,7 +17,7 @@
@@ -22308,9 +22098,7 @@ index 9be0187a..3f7c7448
 +AliasExport(GLvoid,glCompileShader,ARB,(GLhandleARB shaderObj));
 +AliasExport(GLvoid,glGetShaderSource,ARB,(GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *source));
 diff --git a/src/gl/shader.h b/src/gl/shader.h
-old mode 100755
-new mode 100644
-index 3d36dae3..6f85d7cf
+index 3d36dae3..6f85d7cf 100755
 --- a/src/gl/shader.h
 +++ b/src/gl/shader.h
 @@ -4,6 +4,7 @@
@@ -22384,9 +22172,7 @@ index 3d36dae3..6f85d7cf
      
  #endif // _GL4ES_SHADER_H_
 diff --git a/src/gl/shader_hacks.c b/src/gl/shader_hacks.c
-old mode 100755
-new mode 100644
-index a3b5aab7..aa781b4e
+index a3b5aab7..aa781b4e 100755
 --- a/src/gl/shader_hacks.c
 +++ b/src/gl/shader_hacks.c
 @@ -255,6 +255,193 @@ static const hack_t gl4es_hacks[] = {
@@ -22625,9 +22411,6 @@ index a3b5aab7..aa781b4e
 -}
 \ No newline at end of file
 +}
-diff --git a/src/gl/shader_hacks.h b/src/gl/shader_hacks.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/shaderconv.c b/src/gl/shaderconv.c
 index 6f048ec9..b9ca7632 100644
 --- a/src/gl/shaderconv.c
@@ -23479,13 +23262,8 @@ index 6f048ec9..b9ca7632 100644
    if(pEntry!=pBuffer)
      free(pBuffer);
    return Tmp;
-diff --git a/src/gl/shaderconv.h b/src/gl/shaderconv.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/stack.c b/src/gl/stack.c
-old mode 100755
-new mode 100644
-index f3810b2f..1a6d5556
+index f3810b2f..1a6d5556 100755
 --- a/src/gl/stack.c
 +++ b/src/gl/stack.c
 @@ -14,7 +14,7 @@
@@ -23578,9 +23356,7 @@ index f3810b2f..1a6d5556
 +AliasExport_V(void,glPopAttrib);
 \ No newline at end of file
 diff --git a/src/gl/stack.h b/src/gl/stack.h
-old mode 100755
-new mode 100644
-index 9fce6ce9..3a6fc275
+index 9fce6ce9..3a6fc275 100755
 --- a/src/gl/stack.h
 +++ b/src/gl/stack.h
 @@ -170,9 +170,9 @@ typedef struct _glclientstack_t {
@@ -23598,9 +23374,7 @@ index 9fce6ce9..3a6fc275
  
  #endif // _GL4ES_STACK_H_
 diff --git a/src/gl/state.h b/src/gl/state.h
-old mode 100755
-new mode 100644
-index dca366e6..2defbffc
+index dca366e6..2defbffc 100755
 --- a/src/gl/state.h
 +++ b/src/gl/state.h
 @@ -330,7 +330,7 @@ typedef struct {
@@ -23744,9 +23518,6 @@ index 14e49419..8f9cdad8 100644
  }
 -void glClearStencil(GLint s) AliasExport("gl4es_glClearStencil");
 +AliasExport(void,glClearStencil,,(GLint s));
-diff --git a/src/gl/stencil.h b/src/gl/stencil.h
-old mode 100755
-new mode 100644
 diff --git a/src/gl/string_utils.c b/src/gl/string_utils.c
 index f156880c..15ab0985 100755
 --- a/src/gl/string_utils.c
@@ -24150,9 +23921,7 @@ index 246459db..cc34c773 100755
  
  #endif // _GL4ES_STRING_UTILS_H_
 diff --git a/src/gl/stubs.c b/src/gl/stubs.c
-old mode 100755
-new mode 100644
-index 35fcd831..807d3889
+index 35fcd831..807d3889 100755
 --- a/src/gl/stubs.c
 +++ b/src/gl/stubs.c
 @@ -1,8 +1,6 @@
@@ -24166,9 +23935,7 @@ index 35fcd831..807d3889
 -GLAPI void APIENTRY glClampColorARB (GLenum target, GLenum clamp){STUB}
 +NonAliasExportDecl(void,glClampColorARB,(GLenum target, GLenum clamp)){STUB}
 diff --git a/src/gl/texenv.c b/src/gl/texenv.c
-old mode 100755
-new mode 100644
-index e3744873..576ebcf7
+index e3744873..576ebcf7 100755
 --- a/src/gl/texenv.c
 +++ b/src/gl/texenv.c
 @@ -14,7 +14,7 @@
@@ -24239,9 +24006,7 @@ index e3744873..576ebcf7
 +AliasExport(void,glGetTexEnvfv,,(GLenum target, GLenum pname, GLfloat * params));
 +AliasExport(void,glGetTexEnviv,,(GLenum target, GLenum pname, GLint * params));
 diff --git a/src/gl/texenv.h b/src/gl/texenv.h
-old mode 100755
-new mode 100644
-index b1a02250..36237048
+index b1a02250..36237048 100755
 --- a/src/gl/texenv.h
 +++ b/src/gl/texenv.h
 @@ -32,11 +32,11 @@ typedef struct {
@@ -24342,9 +24107,7 @@ index 81a1f20a..d193ad05 100644
 +AliasExport(void,glMultTransposeMatrixd,,(const GLdouble *m));
 +AliasExport(void,glMultTransposeMatrixf,,(const GLfloat *m));
 diff --git a/src/gl/texgen.h b/src/gl/texgen.h
-old mode 100755
-new mode 100644
-index 4995f19f..682cbc41
+index 4995f19f..682cbc41 100755
 --- a/src/gl/texgen.h
 +++ b/src/gl/texgen.h
 @@ -3,15 +3,15 @@
@@ -24371,9 +24134,7 @@ index 4995f19f..682cbc41
  
  #endif // _GL4ES_TEXGEN_H_
 diff --git a/src/gl/texture.c b/src/gl/texture.c
-old mode 100755
-new mode 100644
-index 46f8dc3c..911eadfd
+index 46f8dc3c..911eadfd 100755
 --- a/src/gl/texture.c
 +++ b/src/gl/texture.c
 @@ -159,7 +159,9 @@ void internal2format_type(GLenum internalformat, GLenum *format, GLenum *type)
@@ -24790,9 +24551,7 @@ index 46f8dc3c..911eadfd
 +AliasExport(void,glTexStorage1D,,(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width));
 +AliasExport(void,glTexStorage2D,,(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height));
 diff --git a/src/gl/texture.h b/src/gl/texture.h
-old mode 100755
-new mode 100644
-index 07529433..4614a234
+index 07529433..4614a234 100755
 --- a/src/gl/texture.h
 +++ b/src/gl/texture.h
 @@ -5,81 +5,81 @@
@@ -25016,9 +24775,7 @@ index 07529433..4614a234
 +
  #endif // _GL4ES_TEXTURE_H_
 diff --git a/src/gl/texture_3d.c b/src/gl/texture_3d.c
-old mode 100755
-new mode 100644
-index b7aa7cff..e80a1f1a
+index b7aa7cff..e80a1f1a 100755
 --- a/src/gl/texture_3d.c
 +++ b/src/gl/texture_3d.c
 @@ -24,7 +24,7 @@
@@ -25083,9 +24840,7 @@ index b7aa7cff..e80a1f1a
 -void glTexStorage3D(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth) AliasExport("gl4es_glTexStorage3D");
 +AliasExport(void,glTexStorage3D,,(GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth));
 diff --git a/src/gl/texture_compressed.c b/src/gl/texture_compressed.c
-old mode 100755
-new mode 100644
-index 20bdeb51..2a17bf04
+index 20bdeb51..2a17bf04 100755
 --- a/src/gl/texture_compressed.c
 +++ b/src/gl/texture_compressed.c
 @@ -164,7 +164,7 @@ GLvoid *uncompressDXTc(GLsizei width, GLsizei height, GLenum format, GLsizei ima
@@ -25286,9 +25041,7 @@ index 20bdeb51..2a17bf04
 +AliasExport(void,glGetCompressedTexImage,ARB,(GLenum target, GLint lod, GLvoid *img));
  
 diff --git a/src/gl/texture_params.c b/src/gl/texture_params.c
-old mode 100755
-new mode 100644
-index 5322a159..8b3cb788
+index 5322a159..8b3cb788 100755
 --- a/src/gl/texture_params.c
 +++ b/src/gl/texture_params.c
 @@ -88,7 +88,7 @@ void tex_coord_matrix(GLfloat *tex, GLsizei len, const GLfloat* mat) {
@@ -26210,9 +25963,7 @@ index 5322a159..8b3cb788
 +AliasExport(void,glActiveTexture,ARB,(GLenum texture));
 +AliasExport(void,glClientActiveTexture,ARB,(GLenum texture));
 diff --git a/src/gl/texture_read.c b/src/gl/texture_read.c
-old mode 100755
-new mode 100644
-index 5a573380..e994b78c
+index 5a573380..e994b78c 100755
 --- a/src/gl/texture_read.c
 +++ b/src/gl/texture_read.c
 @@ -31,9 +31,9 @@ static int inline nlevel(int size, int level) {
@@ -26350,9 +26101,7 @@ index 5a573380..e994b78c
 +AliasExport(void,glCopyTexSubImage1D,,(GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width));
  
 diff --git a/src/gl/uniform.c b/src/gl/uniform.c
-old mode 100755
-new mode 100644
-index 6e53b441..98b56148
+index 6e53b441..98b56148 100755
 --- a/src/gl/uniform.c
 +++ b/src/gl/uniform.c
 @@ -105,26 +105,26 @@ int n_uniform(GLenum type) {
@@ -27005,9 +26754,7 @@ index 6e53b441..98b56148
 +AliasExport(void,glProgramUniformMatrix3fv,EXT,(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value));
 +AliasExport(void,glProgramUniformMatrix4fv,EXT,(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value));
 diff --git a/src/gl/uniform.h b/src/gl/uniform.h
-old mode 100755
-new mode 100644
-index 12bb33b2..6b4cccfe
+index 12bb33b2..6b4cccfe 100755
 --- a/src/gl/uniform.h
 +++ b/src/gl/uniform.h
 @@ -9,73 +9,73 @@ int is_uniform_float(GLenum type);
@@ -27372,9 +27119,7 @@ index 52b9272f..e4d2b783 100644
  #include "../string_utils.h"
  #include "../logs.h"
 diff --git a/src/gl/wrap/gl4es.h b/src/gl/wrap/gl4es.h
-old mode 100755
-new mode 100644
-index 998c6a54..3c63cecf
+index 998c6a54..3c63cecf 100755
 --- a/src/gl/wrap/gl4es.h
 +++ b/src/gl/wrap/gl4es.h
 @@ -7,76 +7,76 @@
@@ -27825,9 +27570,7 @@ index 998c6a54..3c63cecf
  
  #endif
 diff --git a/src/gl/wrap/gl4eswraps.c b/src/gl/wrap/gl4eswraps.c
-old mode 100755
-new mode 100644
-index ee675e22..f7788a32
+index ee675e22..f7788a32 100755
 --- a/src/gl/wrap/gl4eswraps.c
 +++ b/src/gl/wrap/gl4eswraps.c
 @@ -13,20 +13,20 @@
@@ -31907,9 +31650,7 @@ index ed885944..5168b181 100644
          case FORMAT_void_GLenum: {
              PACKED_void_GLenum *unpacked = (PACKED_void_GLenum *)packed;
 diff --git a/src/gl/wrap/gles.h b/src/gl/wrap/gles.h
-old mode 100755
-new mode 100644
-index 0ecf5763..b5d861fd
+index 0ecf5763..b5d861fd 100755
 --- a/src/gl/wrap/gles.h
 +++ b/src/gl/wrap/gles.h
 @@ -138,7 +138,7 @@ enum FORMAT {
@@ -34253,9 +33994,7 @@ index 0ecf5763..b5d861fd
  #define push_glVertexPointer(size, type, stride, pointer) { \
      glVertexPointer_PACKED *packed_data = malloc(sizeof(glVertexPointer_PACKED)); \
 diff --git a/src/gl/wrap/glstub.c b/src/gl/wrap/glstub.c
-old mode 100755
-new mode 100644
-index 53206911..2fdf305a
+index 53206911..2fdf305a 100755
 --- a/src/gl/wrap/glstub.c
 +++ b/src/gl/wrap/glstub.c
 @@ -3,15 +3,15 @@
@@ -34279,9 +34018,7 @@ index 53206911..2fdf305a
  /*STUB(void,glFogCoordd,(GLdouble coord));
  STUB(void,glFogCoordf,(GLfloat coord));
 diff --git a/src/gl/wrap/skips.h b/src/gl/wrap/skips.h
-old mode 100755
-new mode 100644
-index c95d2a73..f709d0d5
+index c95d2a73..f709d0d5 100755
 --- a/src/gl/wrap/skips.h
 +++ b/src/gl/wrap/skips.h
 @@ -204,6 +204,7 @@
@@ -34293,9 +34030,7 @@ index c95d2a73..f709d0d5
  #define skip_glDisableVertexAttribArray
  #define skip_glVertexAttrib1f
 diff --git a/src/gl/wrap/stub.h b/src/gl/wrap/stub.h
-old mode 100755
-new mode 100644
-index 6b84441b..abbe6f12
+index 6b84441b..abbe6f12 100755
 --- a/src/gl/wrap/stub.h
 +++ b/src/gl/wrap/stub.h
 @@ -1,40 +1,40 @@
@@ -34376,13 +34111,8 @@ index 6b84441b..abbe6f12
 +void APIENTRY_GL4ES gl4es_glGetPolygonStipple(GLubyte *pattern);
 +void APIENTRY_GL4ES gl4es_glFeedbackBuffer(GLsizei size, GLenum type, GLfloat *buffer);
 +void APIENTRY_GL4ES gl4es_glEdgeFlagv(GLboolean *flag);
-diff --git a/src/glx/gbm.c b/src/glx/gbm.c
-old mode 100755
-new mode 100644
 diff --git a/src/glx/glx.c b/src/glx/glx.c
-old mode 100755
-new mode 100644
-index aae0b365..06dce281
+index aae0b365..06dce281 100755
 --- a/src/glx/glx.c
 +++ b/src/glx/glx.c
 @@ -1,9 +1,9 @@
@@ -35297,9 +35027,7 @@ index aae0b365..06dce281
 +AliasExport(void,glXWaitX,,());
 +AliasExport(void,glXReleaseBuffersMESA,,());
 diff --git a/src/glx/glx.h b/src/glx/glx.h
-old mode 100755
-new mode 100644
-index c2ed2f8d..95e8dedd
+index c2ed2f8d..95e8dedd 100755
 --- a/src/glx/glx.h
 +++ b/src/glx/glx.h
 @@ -9,6 +9,9 @@
@@ -35374,9 +35102,6 @@ index c2ed2f8d..95e8dedd
 +#endif // !defined(NOX11) || defined(GLX_STUBS)
  
  #endif // _GLX_GLX_H
-diff --git a/src/glx/glx_gbm.h b/src/glx/glx_gbm.h
-old mode 100755
-new mode 100644
 diff --git a/src/glx/glx_stubs.c b/src/glx/glx_stubs.c
 new file mode 100644
 index 00000000..4ba4de5c
@@ -35462,9 +35187,7 @@ index 00000000..4ba4de5c
 +#endif
 \ No newline at end of file
 diff --git a/src/glx/hardext.c b/src/glx/hardext.c
-old mode 100755
-new mode 100644
-index ad72ceb4..1b2ce78e
+index ad72ceb4..54a9e995 100755
 --- a/src/glx/hardext.c
 +++ b/src/glx/hardext.c
 @@ -51,10 +51,12 @@ static int testGLSL(const char* version, int uniformLoc) {
@@ -35524,7 +35247,7 @@ index ad72ceb4..1b2ce78e
              hardext.fbo = 1; 
              hardext.blendcolor = 1;
              hardext.blendsub = 1;
-@@ -226,6 +233,11 @@ void GetHardwareExtensions(int notest)
+@@ -219,6 +226,11 @@ void GetHardwareExtensions(int notest)
      }
      else
  #endif
@@ -35545,7 +35268,7 @@ index ad72ceb4..1b2ce78e
      // Parse them!
      #define S(A, B, C) if(strstr(Exts, A)) { hardext.B = 1; SHUT_LOGD("Extension %s detected%s",A, C?" and used\n":"\n"); } 
      if(hardext.esversion>1) hardext.npot = 1;
-@@ -282,7 +289,12 @@ void GetHardwareExtensions(int notest)
+@@ -282,7 +294,12 @@ void GetHardwareExtensions(int notest)
          SHUT_LOGD("Hardware %s NPOT detected and used\n", hardext.npot==3?"Full":(hardext.npot==2?"Limited+Mipmap":"Limited"));
      }
      S("GL_EXT_blend_minmax ", blendminmax, 1);
@@ -35559,7 +35282,7 @@ index ad72ceb4..1b2ce78e
      /*if(hardext.blendcolor==0) {
          // try by just loading the function
          LOAD_GLES_OR_OES(glBlendColor);
-@@ -311,7 +323,7 @@ void GetHardwareExtensions(int notest)
+@@ -311,7 +328,7 @@ void GetHardwareExtensions(int notest)
          hardext.cubemap = 1;
          SHUT_LOGD("BlendColor is in core, and so used\n");
          hardext.blendcolor = 1;
@@ -35568,7 +35291,7 @@ index ad72ceb4..1b2ce78e
          hardext.blendsub = 1;
          SHUT_LOGD("Blend Function and Equation Separation is in core, and so used\n");
          hardext.blendfunc = 1;
-@@ -340,6 +352,11 @@ void GetHardwareExtensions(int notest)
+@@ -340,6 +357,11 @@ void GetHardwareExtensions(int notest)
          S("GL_EXT_color_buffer_float ", floatfbo, 1);
          S("GL_EXT_color_buffer_half_float ", halffloatfbo, 1);
      }
@@ -35580,7 +35303,7 @@ index ad72ceb4..1b2ce78e
  
      if (hardext.esversion>1) {
          if(!globals4es.nohighp) {
-@@ -371,7 +388,11 @@ void GetHardwareExtensions(int notest)
+@@ -371,7 +393,11 @@ void GetHardwareExtensions(int notest)
          gles_glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &hardext.maxvattrib);
          SHUT_LOGD("Max vertex attrib: %d\n", hardext.maxvattrib);
          S("GL_OES_standard_derivatives ", derivatives, 1);
@@ -35592,7 +35315,7 @@ index ad72ceb4..1b2ce78e
          if(hardext.prgbinary) {
              gles_glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &hardext.prgbin_n);
              SHUT_LOGD("Number of supported Program Binary Format: %d\n", hardext.prgbin_n);
-@@ -411,7 +432,7 @@ void GetHardwareExtensions(int notest)
+@@ -411,7 +437,7 @@ void GetHardwareExtensions(int notest)
      }
      
      // get GLES driver signatures...
@@ -35646,9 +35369,7 @@ index 8bcc42b6..a01a11f4 100755
  
  #endif
 diff --git a/src/glx/lookup.c b/src/glx/lookup.c
-old mode 100755
-new mode 100644
-index 68f7ff7b..e558439e
+index 68f7ff7b..e558439e 100755
 --- a/src/glx/lookup.c
 +++ b/src/glx/lookup.c
 @@ -12,10 +12,10 @@
@@ -35702,16 +35423,8 @@ index 68f7ff7b..e558439e
 +AliasExport(void*,glXGetProcAddress,ARB,(const char* name));
  #endif
 \ No newline at end of file
-diff --git a/src/glx/rpi.c b/src/glx/rpi.c
-old mode 100755
-new mode 100644
-diff --git a/src/glx/rpi.h b/src/glx/rpi.h
-old mode 100755
-new mode 100644
 diff --git a/src/glx/streaming.c b/src/glx/streaming.c
-old mode 100755
-new mode 100644
-index 1b0b98f6..bf7b1636
+index 1b0b98f6..bf7b1636 100755
 --- a/src/glx/streaming.c
 +++ b/src/glx/streaming.c
 @@ -28,7 +28,7 @@ const GLubyte * bcdev[10];
@@ -35723,15 +35436,6 @@ index 1b0b98f6..bf7b1636
  
  void Streaming_Initialize() {
      LOAD_EGL(eglGetProcAddress);
-diff --git a/src/glx/streaming.h b/src/glx/streaming.h
-old mode 100755
-new mode 100644
-diff --git a/src/glx/utils.c b/src/glx/utils.c
-old mode 100755
-new mode 100644
-diff --git a/src/glx/utils.h b/src/glx/utils.h
-old mode 100755
-new mode 100644
 diff --git a/tests/test.sh b/tests/test.sh
 index b34274b6..cc295b68 100755
 --- a/tests/test.sh

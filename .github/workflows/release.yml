@@ -21,13 +21,11 @@ jobs:
     runs-on: MacStadium
     steps:
       - name: Remove work folders
-        env:
-          password: ${{ secrets.ELLIE_MINI_SECRET }}
         run: |
           echo "before"
           ls -lah ./
-          echo $password | sudo -S rm -rf ./* || true
-          echo $password | sudo -S rm -rf ./.??* || true
+          rm -rf ./* || true
+          rm -rf ./.??* || true
           echo "after"
           ls -lah ./
           
@@ -120,8 +118,6 @@ jobs:
           name: jre21-ios-aarch64
 
       - name: Build for ${{ matrix.platform_name }}
-        env:
-          password: ${{ secrets.ELLIE_MINI_SECRET }}
         run: |
           export PATH=/opt/procursus/bin:/opt/homebrew/bin:$PATH
           export RUNNER=1

@@ -69,8 +69,11 @@ int pojavInitOpenGL() {
     } else if ([renderer hasPrefix:@"libOSMesa"]) {
         setenv("GALLIUM_DRIVER","zink",1);
         set_osm_bridge_tbl();
-    }
     JNI_LWJGL_changeRenderer(renderer.UTF8String);
+    // Preload EGL and GLESv2 frameworks into the global symbol space so all renderers can resolve symbols
+    dlopen("@rpath/libEGL.framework/libEGL", RTLD_GLOBAL | RTLD_NOW);
+    dlopen("@rpath/libGLESv2.framework/libGLESv2", RTLD_GLOBAL | RTLD_NOW);
+
     // Preload renderer library
     void *rendererHandle = dlopen([NSString stringWithFormat:@"@rpath/%@", renderer].UTF8String, RTLD_GLOBAL);
     if ([renderer isEqualToString:@ RENDERER_NAME_GL4ES] || [renderer isEqualToString:@ RENDERER_NAME_GL4ES_116]) {

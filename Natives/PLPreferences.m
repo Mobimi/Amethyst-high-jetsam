@@ -63,6 +63,12 @@
             @"auto_ram": @(!getEntitlementValue(@"com.apple.private.memorystatus")),
             @"allocated_memory": [NSNumber numberWithFloat:roundf((NSProcessInfo.processInfo.physicalMemory / 1048576) * 0.25)]
         }.mutableCopy,
+        @"experimental": @{
+            @"active_jetsam_shield": @YES,
+            @"dynamic_heap_shrinking": @YES,
+            @"pcore_qos_priority": @YES,
+            @"async_shader_pipeline": @NO,
+        }.mutableCopy,
         @"internal": @{
             @"isolated": @NO,
             @"latest_version": [NSDictionary new]
