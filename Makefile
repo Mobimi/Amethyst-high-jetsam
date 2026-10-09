@@ -256,7 +256,7 @@ check:
 		$(info $(shell printf "%-20s" "$(v)") = $(value $(v)))) \
 	)
 
-native: dep_mg
+native: dep_mg dep_gl4es_116
 	echo '[Amethyst v$(VERSION)] native - start'
 	mkdir -p $(WORKINGDIR)
 	cd $(WORKINGDIR) && cmake \
@@ -324,6 +324,34 @@ dep_mg:
 	cp $(SOURCEDIR)/Natives/external/MobileGlues/src/main/cpp/libraries/ios/libspirv-cross-c-shared.0.dylib $(WORKINGDIR)/libspirv-cross-c-shared.0.dylib
 	echo '[Amethyst v$(VERSION)] dep_mg - end'
 
+dep_gl4es_116:
+	echo '[Amethyst v$(VERSION)] dep_gl4es_116 - start'
+	mkdir -p $(WORKINGDIR)/gl4es_116
+	cd $(WORKINGDIR)/gl4es_116 && cmake \
+		-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+		-DCMAKE_CROSSCOMPILING=true \
+		-DCMAKE_SYSTEM_NAME=Darwin \
+		-DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+		-DCMAKE_OSX_SYSROOT="$(SDKPATH)" \
+		-DCMAKE_OSX_ARCHITECTURES=arm64 \
+		-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+		-DCMAKE_C_FLAGS="-arch arm64 -Wno-error=implicit-function-declaration" \
+		-DDEFAULT_ES=2 \
+		-DNOX11=ON \
+		-DNOEGL=OFF \
+		-DSTATICLIB=OFF \
+		$(SOURCEDIR)/Natives/external/gl4es_116
+
+	cmake --build $(WORKINGDIR)/gl4es_116 --config $(CMAKE_BUILD_TYPE) -j$(JOBS) --target GL
+	if [ -f "$(WORKINGDIR)/gl4es_116/lib/libgl4es_116.dylib" ]; then \
+		cp $(WORKINGDIR)/gl4es_116/lib/libgl4es_116.dylib $(WORKINGDIR)/libgl4es_116.dylib; \
+	elif [ -f "$(WORKINGDIR)/gl4es_116/src/libgl4es_116.dylib" ]; then \
+		cp $(WORKINGDIR)/gl4es_116/src/libgl4es_116.dylib $(WORKINGDIR)/libgl4es_116.dylib; \
+	elif [ -f "$(WORKINGDIR)/gl4es_116/lib/libGL.dylib" ]; then \
+		cp $(WORKINGDIR)/gl4es_116/lib/libGL.dylib $(WORKINGDIR)/libgl4es_116.dylib; \
+	fi
+	echo '[Amethyst v$(VERSION)] dep_gl4es_116 - end'
+
 assets:
 	echo '[Amethyst v$(VERSION)] assets - start'
 	if [ '$(IOS)' = '0' ] && [ '$(DETECTPLAT)' = 'Darwin' ]; then \
@@ -339,7 +367,7 @@ assets:
 	fi
 	echo '[Amethyst v$(VERSION)] assets - end'
 
-payload: native dep_mg java jre assets
+payload: native dep_mg dep_gl4es_116 java jre assets
 	echo '[Amethyst v$(VERSION)] payload - start'
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs)
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo)
@@ -435,4 +463,4 @@ clean:
 
 		
 
-.PHONY: all clean check native java jre package dsym deploy help
+.PHONY: all clean check native java jre package dsym deploy help dep_mg dep_gl4es_116

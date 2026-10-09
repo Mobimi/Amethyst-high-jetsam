@@ -56,6 +56,10 @@ int pojavInitOpenGL() {
         renderer = @ RENDERER_NAME_GL4ES;
         setenv("RENDERER", renderer.UTF8String, 1);
         set_gl_bridge_tbl();
+    } else if ([renderer isEqualToString:@ RENDERER_NAME_GL4ES_116]) {
+        renderer = @ RENDERER_NAME_GL4ES_116;
+        setenv("RENDERER", renderer.UTF8String, 1);
+        set_gl_bridge_tbl();
     } else if ([renderer isEqualToString:@ RENDERER_NAME_MOBILEGLUES]) {
         renderer = @ RENDERER_NAME_MOBILEGLUES;
         setenv("RENDERER", renderer.UTF8String, 1);
@@ -68,7 +72,10 @@ int pojavInitOpenGL() {
     }
     JNI_LWJGL_changeRenderer(renderer.UTF8String);
     // Preload renderer library
-    dlopen([NSString stringWithFormat:@"@rpath/%@", renderer].UTF8String, RTLD_GLOBAL);
+    void* handle = dlopen([NSString stringWithFormat:@"@rpath/%@", renderer].UTF8String, RTLD_GLOBAL);
+    if (!handle) {
+        NSLog(@"[Amethyst] Failed to dlopen %@: %s", renderer, dlerror());
+    }
 
     return !br_init();
     //return 0;
