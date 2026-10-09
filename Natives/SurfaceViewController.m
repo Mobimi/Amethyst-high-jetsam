@@ -426,6 +426,23 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
 }
 
 
+- (void)updateGrabState {
+    // Update cursor position
+    if (isGrabbing == JNI_TRUE) {
+        CGFloat screenScale = self.surfaceView.layer.contentsScale;
+        CallbackBridge_nativeSendCursorPos(ACTION_DOWN, lastVirtualMousePoint.x * screenScale, lastVirtualMousePoint.y * screenScale);
+        virtualMouseFrame.origin.x = self.view.frame.size.width / 2;
+        virtualMouseFrame.origin.y = self.view.frame.size.height / 2;
+        self.mousePointerView.frame = virtualMouseFrame;
+    }
+    self.scrollPanGesture.enabled = !isGrabbing;
+    self.mousePointerView.hidden = isGrabbing || !virtualMouseEnabled;
+    [self setNeedsUpdateOfPrefersPointerLocked];
+
+    // Update buttons visibility
+    [self updateControlHiddenState:NO];
+}
+
 - (void)launchMinecraft {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         int minVersion = [self.metadata[@"javaVersion"][@"majorVersion"] intValue];
