@@ -35,3 +35,4 @@ typedef struct {
 } gl_render_window_t;
 
 void set_gl_bridge_tbl();
+void amethyst_refresh_benchmark_state(void);

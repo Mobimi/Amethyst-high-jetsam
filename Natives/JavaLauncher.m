@@ -18,6 +18,7 @@
 #import "MinecraftOptionUtils.h"
 #import "PLLogOutputView.h"
 #import "PLProfiles.h"
+#import "ctxbridges/gl_bridge.h"
 
 #define fm NSFileManager.defaultManager
 
@@ -66,6 +67,7 @@ void init_applyExperimentalSettings() {
     unsetenv("LIBGL_NOSHADERLOD");
     unsetenv("LIBGL_SHRINK");
     unsetenv("LIBGL_NOVAOCACHE");
+    unsetenv("AMETHYST_GL4ES_TEXTURE_TRACE");
 
     // 2. Apply Benchmark & FPS log (cadence metrics)
     if (getPrefBool(@"experimental.benchmark")) {
@@ -82,11 +84,12 @@ void init_applyExperimentalSettings() {
     BOOL isGL4ES = (!renderer || [renderer isEqualToString:@"auto"] || [renderer containsString:@"gl4es"]);
 
     if (isGL4ES) {
-        // 3. Shader Error Diagnostics
+        // 3. Shader Error Diagnostics + Bounded Texture Trace
         if (getPrefBool(@"experimental.shader_error_log")) {
             setenv("LIBGL_LOGSHADERERROR", "1", 1);
             setenv("LIBGL_SILENTSTUB", "0", 1);
-            NSLog(@"[Amethyst Experimental] Enabled Shader Error & Stub Diagnostics");
+            setenv("AMETHYST_GL4ES_TEXTURE_TRACE", "1", 1);
+            NSLog(@"[Amethyst Experimental] Enabled Shader Error & Stub Diagnostics + GL4ES Texture Trace");
         }
 
         // 4. Draw Call Batching
@@ -187,6 +190,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     init_loadDefaultEnv();
     init_applyExperimentalSettings();
     init_loadCustomEnv();
+    amethyst_refresh_benchmark_state();
 
     DeviceGetJITFlags(YES); // refresh JIT flags right after loading env
     BOOL requiresTXMWorkaround = DeviceHasJITFlags(JIT_FLAG_FORCE_MIRRORED | JIT_FLAG_HAS_TXM);

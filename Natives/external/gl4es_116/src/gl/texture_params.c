@@ -7,6 +7,7 @@
 #include "decompress.h"
 #include "debug.h"
 #include "enum_info.h"
+#include "envvars.h"
 #include "fpe.h"
 #include "framebuffers.h"
 #include "gles.h"
@@ -877,6 +878,37 @@ void realize_textures(int drawing) {
         GLenum target = map_tex_target(to_target(tgt));
         gltexture_t *tex = glstate->texture.bound[i][tgt];
         GLuint t = tex->glname;
+
+        static int s_tex_trace_enabled = -1;
+        static int s_tex_trace_count = 0;
+        if (__builtin_expect(s_tex_trace_enabled == -1, 0)) {
+            const char *env = GetEnvVar("AMETHYST_GL4ES_TEXTURE_TRACE");
+            s_tex_trace_enabled = (env && strcmp(env, "1") == 0) ? 1 : 0;
+        }
+        if (__builtin_expect(s_tex_trace_enabled == 1 && s_tex_trace_count < 120, 0)) {
+            s_tex_trace_count++;
+            GLuint tex_id = tex ? tex->texture : 0;
+            GLuint gl_name = tex ? tex->glname : 0;
+            GLenum fmt = tex ? tex->format : 0;
+            GLenum int_fmt = tex ? tex->internalformat : 0;
+            GLenum inter_f = tex ? tex->inter_format : 0;
+            int w = tex ? tex->width : 0;
+            int h = tex ? tex->height : 0;
+            int has_alpha = tex ? (int)tex->alpha : 0;
+            int mm_auto = tex ? (int)tex->mipmap_auto : 0;
+            int mm_need = tex ? (int)tex->mipmap_need : 0;
+            int mm_done = tex ? (int)tex->mipmap_done : 0;
+            GLenum min_f = tex ? tex->sampler.min_filter : 0;
+            GLenum mag_f = tex ? tex->sampler.mag_filter : 0;
+            GLuint actual = (i >= 0 && i < MAX_TEX && glstate->actual_tex2d) ? glstate->actual_tex2d[i] : 0;
+
+            printf("[Amethyst TexTrace #%d] TMU=%d (act=%d, bch=%d) en=0x%X tgt=%d tex=%u(gl=%u, act2d=%u) fmt=0x%X/0x%X/0x%X size=%dx%d a=%d mm=[%d,%d,%d] filter=[0x%X,0x%X]\n",
+                   s_tex_trace_count, i, glstate->texture.active, glstate->bound_changed,
+                   tmp, tgt, tex_id, gl_name, actual,
+                   fmt, int_fmt, inter_f, w, h, has_alpha,
+                   mm_auto, mm_need, mm_done,
+                   min_f, mag_f);
+        }
         if(tgt!=ENABLED_CUBE_MAP) {// CUBE MAP are immediatly bound
 #ifdef TEXSTREAM
             if(glstate->bound_stream[i]) {

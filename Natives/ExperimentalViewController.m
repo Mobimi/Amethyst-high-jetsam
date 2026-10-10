@@ -19,8 +19,6 @@
 }
 
 - (void)viewDidLoad {
-    [super viewDidLoad];
-
     self.getPreference = ^id(NSString *section, NSString *key) {
         NSString *fullKey = [NSString stringWithFormat:@"experimental.%@", key];
         return getPrefObject(fullKey);
@@ -155,6 +153,8 @@
             }
         ]
     ];
+
+    [super viewDidLoad];
 }
 
 @end

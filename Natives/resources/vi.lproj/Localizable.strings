@@ -298,43 +298,43 @@
 
 // 1. Render Benchmark
 "preference.title.benchmark" = "Render Benchmark";
-"preference.detail.benchmark" = "Đo đạc chu kỳ hoán đổi khung hình EGL thực tế, ước tính FPS, số lần rớt khung >33.3ms và giật lag >50ms. Tổng hợp ghi log mỗi 5 giây. Không tốn tài nguyên khi tắt.";
+"preference.detail.benchmark" = "Đo đạc chu kỳ hoán đổi khung hình EGL thực tế (swap-completion cadence), ước tính FPS, số lần rớt khung >33.3ms và giật lag >50ms. Tổng hợp ghi log mỗi 5 giây. Tự động cập nhật ở lần khởi chạy Minecraft kế tiếp. Không tốn tài nguyên khi tắt.";
 
 // 2. FPS Log
 "preference.title.fps_log" = "Thống kê FPS (Log)";
-"preference.detail.fps_log" = "Ghi thống kê FPS trung bình và khoảng cách khung hình tối đa vào log hệ thống mỗi 5 giây. Lưu ý: Chỉ xuất ra log, không phải HUD hiển thị trên màn hình.";
+"preference.detail.fps_log" = "Ghi thống kê FPS trung bình và khoảng cách khung hình tối đa vào log hệ thống mỗi 5 giây. Lưu ý: Chỉ xuất ra log, không phải HUD hiển thị trên màn hình. Tự động cập nhật ở lần khởi chạy Minecraft kế tiếp.";
 
 // 3. Shader Error Diagnostics
 "preference.title.shader_error_log" = "Chẩn đoán lỗi Shader";
-"preference.detail.shader_error_log" = "Kích hoạt LIBGL_LOGSHADERERROR=1 và LIBGL_SILENTSTUB=0 trong GL4ES để thu thập chi tiết lỗi biên dịch shader và hàm stub bị thiếu. Tăng lượng log và tiêu tốn CPU. Yêu cầu khởi động lại game.";
+"preference.detail.shader_error_log" = "Kích hoạt LIBGL_LOGSHADERERROR=1, LIBGL_SILENTSTUB=0 và chẩn đoán texture có giới hạn (AMETHYST_GL4ES_TEXTURE_TRACE=1) trong GL4ES. Tăng lượng log và tiêu tốn CPU. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 4. Draw Call Batching
 "preference.title.draw_batching" = "Gộp lệnh vẽ (Batching)";
-"preference.detail.draw_batching" = "Điều khiển LIBGL_BATCH. Gộp các lệnh vẽ glDraw liên tiếp theo ngưỡng đỉnh (vertices). Có thể tăng hiệu năng vẽ hoặc gây lỗi hình ảnh tùy thuộc vào mod. Yêu cầu khởi động lại game.";
+"preference.detail.draw_batching" = "Điều khiển LIBGL_BATCH. Gộp các lệnh vẽ glDraw liên tiếp theo ngưỡng đỉnh (vertices). Có thể tăng hiệu năng vẽ hoặc gây lỗi hình ảnh tùy thuộc vào mod. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 5. VBO Compatibility / Performance
 "preference.title.use_vbo" = "Chế độ VBO";
-"preference.detail.use_vbo" = "Điều khiển LIBGL_USEVBO. 0 = Tắt, 1 = VBO tiêu chuẩn (mặc định), 2 = VBO kèm glLockArrays. Chế độ nâng cao có thể tăng tốc nếu backend hỗ trợ. Yêu cầu khởi động lại game.";
+"preference.detail.use_vbo" = "Điều khiển LIBGL_USEVBO. 0 = Tắt, 1 = VBO tiêu chuẩn (mặc định), 2 = VBO kèm glLockArrays. Chế độ nâng cao có thể tăng tốc nếu backend hỗ trợ. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 6. Texture & Mipmap Compatibility
 "preference.title.mipmap_mode" = "Tương thích Mipmap";
-"preference.detail.mipmap_mode" = "Điều khiển LIBGL_MIPMAP. 1 = Ép AutoMipMap, 2 = Đoán AutoMipMap, 3 = Tắt hoàn toàn MipMap, 4 = Bỏ qua texture không vuông. Có thể làm mờ hoặc nhấp nháy vân bề mặt. Yêu cầu khởi động lại game.";
+"preference.detail.mipmap_mode" = "Điều khiển LIBGL_MIPMAP. 1 = Ép AutoMipMap, 2 = Đoán AutoMipMap, 3 = Tắt hoàn toàn MipMap, 4 = Bỏ qua texture không vuông. Có thể làm mờ hoặc nhấp nháy vân bề mặt. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 7. Shader Compatibility Mode
 "preference.title.no_shader_lod" = "Chế độ tương thích Shader";
-"preference.detail.no_shader_lod" = "Bật LIBGL_NOSHADERLOD=1 để bỏ texture2DLod trong shader chuyển đổi. Công tắc thử nghiệm tương thích shader mod (như sương mù/hiệu ứng Dynamic Surroundings); không đảm bảo sửa hết lỗi. Yêu cầu khởi động lại game.";
+"preference.detail.no_shader_lod" = "Bật LIBGL_NOSHADERLOD=1 để bỏ texture2DLod trong shader chuyển đổi. Công tắc thử nghiệm tương thích shader mod (như sương mù/hiệu ứng Dynamic Surroundings); không đảm bảo sửa hết lỗi. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 8. Texture Memory Saver
 "preference.title.shrink_texture" = "Tiết kiệm RAM vân bề mặt";
-"preference.detail.shrink_texture" = "Điều khiển LIBGL_SHRINK. Thu nhỏ kích thước texture để tiết kiệm RAM/VRAM nhưng làm giảm độ sắc nét và chất lượng hình ảnh. Mặc định giữ nguyên chất lượng gốc. Yêu cầu khởi động lại game.";
+"preference.detail.shrink_texture" = "Điều khiển LIBGL_SHRINK. Thu nhỏ kích thước texture để tiết kiệm RAM/VRAM nhưng làm giảm độ sắc nét và chất lượng hình ảnh. Mặc định giữ nguyên chất lượng gốc. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 9. VAO Cache Compatibility
 "preference.title.no_vao_cache" = "Tắt bộ nhớ đệm VAO";
-"preference.detail.no_vao_cache" = "Bật LIBGL_NOVAOCACHE=1. Tắt bộ nhớ đệm VAO trong GL4ES. Có thể tăng tải CPU và giảm FPS; dùng để điều tra lỗi bộ nhớ VAO. Yêu cầu khởi động lại game.";
+"preference.detail.no_vao_cache" = "Bật LIBGL_NOVAOCACHE=1. Tắt bộ nhớ đệm VAO trong GL4ES. Có thể tăng tải CPU và giảm FPS; dùng để điều tra lỗi bộ nhớ VAO. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
 // 10. Low-Stutter JVM Profile
 "preference.title.low_stutter_jvm" = "Cấu hình JVM giảm giật lag";
-"preference.detail.low_stutter_jvm" = "Áp dụng cấu hình G1 GC giảm giật lag (-XX:+UseG1GC -XX:MaxGCPauseMillis=20). Lưu ý: 20ms là mục tiêu định hướng của bộ dọn rác GC, không phải cam kết tuyệt đối. Không thay đổi RAM hay JIT. Yêu cầu khởi động lại game.";
+"preference.detail.low_stutter_jvm" = "Áp dụng cấu hình G1 GC giảm giật lag (-XX:+UseG1GC -XX:MaxGCPauseMillis=20). Lưu ý: 20ms là mục tiêu định hướng của bộ dọn rác GC, không phải cam kết tuyệt đối. Không thay đổi RAM hay JIT. Áp dụng ở lần khởi chạy Minecraft kế tiếp.";
 
 // 11. Adaptive Render Scale
 "preference.title.adaptive_render_scale" = "Co giãn độ phân giải động";

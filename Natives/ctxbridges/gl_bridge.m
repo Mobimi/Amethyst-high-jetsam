@@ -187,14 +187,40 @@ void gl_make_current(gl_render_window_t* bundle) {
     }
 }
 
-static void amethyst_benchmark_on_swap(void) {
-    static uint64_t s_last_swap_time_ns = 0;
-    static uint64_t s_window_start_time_ns = 0;
-    static uint64_t s_frame_count = 0;
-    static uint32_t s_drops_33ms = 0;
-    static uint32_t s_stutters_50ms = 0;
-    static uint64_t s_max_interval_ns = 0;
+static int s_benchmark_enabled = 0;
+static int s_fps_log_enabled = 0;
+static int s_metrics_active = 0;
 
+static uint64_t s_last_swap_time_ns = 0;
+static uint64_t s_window_start_time_ns = 0;
+static uint64_t s_frame_count = 0;
+static uint32_t s_drops_33ms = 0;
+static uint32_t s_stutters_50ms = 0;
+static uint64_t s_max_interval_ns = 0;
+
+void amethyst_refresh_benchmark_state(void) {
+    const char *b = getenv("AMETHYST_RENDER_BENCHMARK");
+    const char *f = getenv("AMETHYST_FPS_LOG");
+    int new_bench = (b && strcmp(b, "1") == 0) ? 1 : 0;
+    int new_fps = (f && strcmp(f, "1") == 0) ? 1 : 0;
+    int new_metrics = (new_bench || new_fps) ? 1 : 0;
+
+    // Reset stats when refreshing, so downtime between launches is not counted as a spike
+    s_last_swap_time_ns = 0;
+    s_window_start_time_ns = 0;
+    s_frame_count = 0;
+    s_drops_33ms = 0;
+    s_stutters_50ms = 0;
+    s_max_interval_ns = 0;
+
+    s_benchmark_enabled = new_bench;
+    s_fps_log_enabled = new_fps;
+    s_metrics_active = new_metrics;
+
+    NSLog(@"[Amethyst Benchmark] State refreshed: benchmark=%d, fps_log=%d", s_benchmark_enabled, s_fps_log_enabled);
+}
+
+static void amethyst_benchmark_on_swap(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t now_ns = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
@@ -225,12 +251,7 @@ static void amethyst_benchmark_on_swap(void) {
         double avg_fps = (double)s_frame_count / duration_sec;
         double max_interval_ms = (double)s_max_interval_ns / 1.0e6;
 
-        const char *bench_env = getenv("AMETHYST_RENDER_BENCHMARK");
-        const char *fps_env = getenv("AMETHYST_FPS_LOG");
-        BOOL is_bench = (bench_env && strcmp(bench_env, "1") == 0);
-        BOOL is_fps = (fps_env && strcmp(fps_env, "1") == 0);
-
-        if (is_bench) {
+        if (s_benchmark_enabled) {
             const char *renderer = getenv("RENDERER");
             const char *batch = getenv("LIBGL_BATCH");
             const char *vbo = getenv("LIBGL_USEVBO");
@@ -248,13 +269,13 @@ static void amethyst_benchmark_on_swap(void) {
                   noshaderlod ? noshaderlod : "off",
                   shrink ? shrink : "default",
                   novaocache ? novaocache : "off");
-            NSLog(@"[Amethyst Benchmark] Swap Cadence: Est. FPS: %.1f | Frames: %llu | Max Interval: %.2f ms",
+            NSLog(@"[Amethyst Benchmark] Swap-Completion Cadence: Est. FPS: %.1f | Frames: %llu | Max Interval: %.2f ms",
                   avg_fps, s_frame_count, max_interval_ms);
             NSLog(@"[Amethyst Benchmark] Frame Gaps: >33.3ms (drops): %u | >50.0ms (stutter spikes): %u",
                   s_drops_33ms, s_stutters_50ms);
             NSLog(@"[Amethyst Benchmark] ===================================");
-        } else if (is_fps) {
-            NSLog(@"[Amethyst FPS] Cadence: %.1f FPS (Frames: %llu, window: %.1fs, max frame gap: %.1f ms, drops >33ms: %u, stutters >50ms: %u)",
+        } else if (s_fps_log_enabled) {
+            NSLog(@"[Amethyst FPS] Swap-Completion Cadence: %.1f FPS (Frames: %llu, window: %.1fs, max gap: %.1f ms, drops >33ms: %u, stutters >50ms: %u)",
                   avg_fps, s_frame_count, duration_sec, max_interval_ms, s_drops_33ms, s_stutters_50ms);
         }
 
@@ -267,20 +288,16 @@ static void amethyst_benchmark_on_swap(void) {
 }
 
 void gl_swap_buffers() {
-    static int s_metrics_active = -1;
-    if (__builtin_expect(s_metrics_active == -1, 0)) {
-        const char *b = getenv("AMETHYST_RENDER_BENCHMARK");
-        const char *f = getenv("AMETHYST_FPS_LOG");
-        s_metrics_active = ((b && strcmp(b, "1") == 0) || (f && strcmp(f, "1") == 0)) ? 1 : 0;
-    }
-    if (__builtin_expect(s_metrics_active == 1, 0)) {
-        amethyst_benchmark_on_swap();
+    EGLBoolean swap_ok = handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface);
+    if (!swap_ok) {
+        if (handle.eglGetError() == EGL_BAD_SURFACE) {
+            NSLog(@"eglSwapBuffers error 0x%x", handle.eglGetError());
+        }
+        return;
     }
 
-    if (!handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface) && handle.eglGetError() == EGL_BAD_SURFACE) {
-        NSLog(@"eglSwapBuffers error 0x%x", handle.eglGetError());
-        //stopSwapBuffers = true;
-        //closeGLFWWindow();
+    if (__builtin_expect(s_metrics_active, 0)) {
+        amethyst_benchmark_on_swap();
     }
 }
 
