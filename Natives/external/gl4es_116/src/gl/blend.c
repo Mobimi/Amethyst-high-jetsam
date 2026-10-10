@@ -120,9 +120,11 @@ void APIENTRY_GL4ES gl4es_glBlendFuncSeparate(GLenum sfactorRGB, GLenum dfactorR
                 gl4es_glBlendFunc(sfactorRGB, dfactorRGB);
         } else
     #endif
-        amethyst_trace_backend_record("glBlendFuncSeparate", sfactorRGB, dfactorRGB, sfactorAlpha, __FILE__, __LINE__);
-        gles_glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
-        amethyst_probe_backend_call("glBlendFuncSeparate", __FILE__, __LINE__);
+        {
+            amethyst_trace_backend_record("glBlendFuncSeparate", sfactorRGB, dfactorRGB, sfactorAlpha, __FILE__, __LINE__);
+            gles_glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
+            amethyst_probe_backend_call("glBlendFuncSeparate", __FILE__, __LINE__);
+        }
     }
 
     glstate->blendsfactorrgb = sfactorRGB;
