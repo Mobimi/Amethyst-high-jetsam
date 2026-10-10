@@ -22,10 +22,18 @@ static const char PSA_SIGN[] = "GL4ES PrecompiledShaderArchive";
 
 static kh_inline khint_t _hash_fpe(fpe_state_t *p)
 {
-    const char* s = (const char*)p;
-	khint_t h = (khint_t)*s;
-	for (int i=1 ; i<sizeof(fpe_state_t); ++i) h = (h << 5) - h + (khint_t)*(++s);
-	return h;
+    const unsigned char* s = (const unsigned char*)p;
+    uint64_t h = 1469598103934665603ULL;
+    size_t i = 0;
+    for (; i+8<=sizeof(fpe_state_t); i+=8) {
+        uint64_t w;
+        memcpy(&w, s+i, 8);
+        h = (h ^ w) * 1099511628211ULL;
+        h ^= h >> 29;
+    }
+    for (; i<sizeof(fpe_state_t); ++i)
+        h = (h ^ s[i]) * 1099511628211ULL;
+    return (khint_t)(h ^ (h >> 32));
 }
 
 #define kh_fpe_hash_func(key) _hash_fpe(key)

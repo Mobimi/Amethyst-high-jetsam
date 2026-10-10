@@ -79,6 +79,10 @@ typedef struct glstate_s {
     fpe_fpe_t           *fpe;
     fpestatus_t         fpe_client;
     fpe_cache_t         *fpe_cache;
+    struct {
+        fpe_state_t in, out;
+        int         valid, empty;
+    }                   fpe_rel[2];     // cache of fpe_ReleventState result, indexed by "fixed"
     gleshard_t          *gleshard;          //shared
     glesblit_t          *blit;
     fbo_t               fbo;

@@ -424,36 +424,42 @@ GLfloat *copy_eval_float2(GLenum target, GLint ustride, GLint uorder,
 
 void getminmax_indices_us(const GLushort *indices, GLsizei *max, GLsizei *min, GLsizei count) {
     if (!count) return;
-    *max = indices[0];
-    *min = indices[0];
+    GLsizei mx = indices[0], mn = indices[0];
     for (int i = 1; i < count; i++) {
         GLsizei n = indices[i];
-        if( n < *min) *min = n;
-        if (n > *max) *max = n;
+        if (n < mn) mn = n;
+        if (n > mx) mx = n;
     }
+    *max = mx;
+    *min = mn;
 }
 void normalize_indices_us(GLushort *indices, GLsizei *max, GLsizei *min, GLsizei count) {
+    if (!count) return;
     getminmax_indices_us(indices, max, min, count);
-    for (int i = 0; i < count; i++) {
-        indices[i] -= *min;
-    }
+    const GLushort mn = (GLushort)*min;
+    if (mn)
+        for (int i = 0; i < count; i++)
+            indices[i] -= mn;
 }
 
 void getminmax_indices_ui(const GLuint *indices, GLsizei *max, GLsizei *min, GLsizei count) {
     if (!count) return;
-    *max = indices[0];
-    *min = indices[0];
+    GLsizei mx = indices[0], mn = indices[0];
     for (int i = 1; i < count; i++) {
         GLsizei n = indices[i];
-        if( n < *min) *min = n;
-        if (n > *max) *max = n;
+        if (n < mn) mn = n;
+        if (n > mx) mx = n;
     }
+    *max = mx;
+    *min = mn;
 }
 void normalize_indices_ui(GLuint *indices, GLsizei *max, GLsizei *min, GLsizei count) {
+    if (!count) return;
     getminmax_indices_ui(indices, max, min, count);
-    for (int i = 0; i < count; i++) {
-        indices[i] -= *min;
-    }
+    const GLuint mn = (GLuint)*min;
+    if (mn)
+        for (int i = 0; i < count; i++)
+            indices[i] -= mn;
 }
 
 void *copy_gl_array_bgra(void* dest, const void *ptr, GLint stride, GLsizei width, GLsizei skip, GLsizei count) {

@@ -266,11 +266,34 @@ void APIENTRY_GL4ES fpe_ReleventState(fpe_state_t *dest, fpe_state_t *src, int f
 }
 
 int APIENTRY_GL4ES fpe_IsEmpty(fpe_state_t *state) {
-    uint8_t* p = (uint8_t*)state;
-    for (int i=0; i<sizeof(fpe_state_t); ++i)
-        if(p[i])
-            return 0;
+    const uint8_t* p = (const uint8_t*)state;
+    size_t i = 0;
+    for (; i+8<=sizeof(fpe_state_t); i+=8) {
+        uint64_t w;
+        memcpy(&w, p+i, 8);
+        if(w) return 0;
+    }
+    for (; i<sizeof(fpe_state_t); ++i)
+        if(p[i]) return 0;
     return 1;
+}
+
+// cached fpe_ReleventState(glstate->fpe_state): recomputed only if the raw state changed
+static const fpe_state_t* fpe_CachedReleventState(int fixed, int *empty) {
+    __typeof__(glstate->fpe_rel[0]) *c = &glstate->fpe_rel[fixed?1:0];
+    if(!c->valid || memcmp(&c->in, glstate->fpe_state, sizeof(fpe_state_t))) {
+        memcpy(&c->in, glstate->fpe_state, sizeof(fpe_state_t));
+        fpe_ReleventState(&c->out, glstate->fpe_state, fixed);
+        c->empty = fpe_IsEmpty(&c->out);
+        c->valid = 1;
+    }
+    if(empty) *empty = c->empty;
+    return &c->out;
+}
+static inline int fpe_IsEmpty_cached(void) {
+    int e;
+    fpe_CachedReleventState(0, &e);
+    return e;
 }
 
 uniform_t* findUniform(khash_t(uniformlist) *uniforms, const char* name)
@@ -365,13 +388,14 @@ void APIENTRY_GL4ES fpe_oldprogram(fpe_state_t* state) {
 // ********* Shader stuffs handling *********
 void APIENTRY_GL4ES fpe_program(int ispoint) {
     glstate->fpe_state->point = ispoint;
-    fpe_state_t state;
-    fpe_ReleventState(&state, glstate->fpe_state, 1);
-    if(glstate->fpe==NULL || memcmp(&glstate->fpe->state, &state, sizeof(fpe_state_t))) {
+    const fpe_state_t *rel = fpe_CachedReleventState(1, NULL);
+    if(glstate->fpe==NULL || memcmp(&glstate->fpe->state, rel, sizeof(fpe_state_t))) {
         // get cached fpe (or new one)
-        glstate->fpe = fpe_GetCache(glstate->fpe_cache, &state, 1);
+        glstate->fpe = fpe_GetCache(glstate->fpe_cache, (fpe_state_t*)rel, 1);
     }   
     if(glstate->fpe->glprogram==NULL) {
+        fpe_state_t state;
+        memcpy(&state, rel, sizeof(fpe_state_t));
         glstate->fpe->prog = gl4es_glCreateProgram();
         DBG(int from_psa = 1;)
         if(fpe_GetProgramPSA(glstate->fpe->prog, &state)==0) {
@@ -1074,8 +1098,6 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
     // activate program if needed
     if(glstate->glsl->program) {
         // but first, check if some fixedpipeline state (like GL_ALPHA_TEST) need to alter the original program
-        fpe_state_t state;
-        fpe_ReleventState(&state, glstate->fpe_state, 0);
         GLuint program = glstate->glsl->program;
         program_t *glprogram = glstate->glsl->glprogram;
         if(glprogram->default_vertex) {
@@ -1085,8 +1107,10 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
                 glprogram->fpe_cache = fpe_NewCache();
             glprogram = fpe_CustomShader_DefaultVertex(glprogram, &vertex_state);    // fetch from cache if exist or create it
             program = glprogram->id;
-        } else if(!fpe_IsEmpty(&state))
+        } else if(!fpe_IsEmpty_cached())
         {
+            fpe_state_t state;
+            memcpy(&state, fpe_CachedReleventState(0, NULL), sizeof(fpe_state_t));
             // need to create a new program for that...
             DBG(printf("GLSL program %d need customization => ", program);)
             if(!glprogram->fpe_cache)

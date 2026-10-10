@@ -233,10 +233,6 @@ void APIENTRY_GL4ES gl4es_glNamedBufferData(GLuint buffer, GLsizeiptr size, cons
 		errorShim(GL_INVALID_OPERATION);
         return;
     }
-    if (buff->data) {
-        free(buff->data);
-
-    }
     int go_real = 0;
     if(     (buff->type==GL_ARRAY_BUFFER || buff->type==GL_ELEMENT_ARRAY_BUFFER) 
          && (usage==GL_STREAM_DRAW || usage==GL_STATIC_DRAW || usage==GL_DYNAMIC_DRAW) && globals4es.usevbo)
@@ -258,9 +254,14 @@ void APIENTRY_GL4ES gl4es_glNamedBufferData(GLuint buffer, GLsizeiptr size, cons
         gles_glBufferData(buff->type, size, data, usage);
     }
 
+    if (buff->data && buff->size<size) {
+        free(buff->data);
+        buff->data = NULL;
+    }
+    if(!buff->data)
+        buff->data = malloc(size);
     buff->size = size;
     buff->usage = usage;
-    buff->data = malloc(size);
     buff->access = GL_READ_WRITE;
     if (data)
         memcpy(buff->data, data, size);
