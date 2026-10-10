@@ -861,7 +861,7 @@ void realize_textures(int drawing) {
 #endif
     for (int i=0; i<glstate->bound_changed; i++) {
         // get highest priority texture unit
-        int tmp = glstate->enable.texture[glstate->texture.active];
+        int tmp = glstate->enable.texture[i];
         int tgt = ENABLED_TEX2D; // default to TEX2D
         if(IS_TEX3D(tmp))
             tgt = ENABLED_TEX3D;

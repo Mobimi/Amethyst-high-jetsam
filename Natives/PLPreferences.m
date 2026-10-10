@@ -66,6 +66,19 @@
         @"internal": @{
             @"isolated": @NO,
             @"latest_version": [NSDictionary new]
+        }.mutableCopy,
+        @"experimental": @{
+            @"benchmark": @NO,
+            @"fps_log": @NO,
+            @"shader_error_log": @NO,
+            @"draw_batching": @"default",
+            @"use_vbo": @"default",
+            @"mipmap_mode": @"default",
+            @"no_shader_lod": @NO,
+            @"shrink_texture": @"default",
+            @"no_vao_cache": @NO,
+            @"low_stutter_jvm": @NO,
+            @"adaptive_render_scale": @"unsupported"
         }.mutableCopy
     }.mutableCopy;
 

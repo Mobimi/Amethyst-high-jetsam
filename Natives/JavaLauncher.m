@@ -54,6 +54,87 @@ void init_loadDefaultEnv() {
     setenv("HACK_IGNORE_START_ON_FIRST_THREAD", "1", 1);
 }
 
+void init_applyExperimentalSettings() {
+    // 1. Reset all environment variables owned by Experimental to avoid residue from previous sessions
+    unsetenv("AMETHYST_RENDER_BENCHMARK");
+    unsetenv("AMETHYST_FPS_LOG");
+    unsetenv("LIBGL_LOGSHADERERROR");
+    unsetenv("LIBGL_SILENTSTUB");
+    unsetenv("LIBGL_BATCH");
+    unsetenv("LIBGL_USEVBO");
+    unsetenv("LIBGL_MIPMAP");
+    unsetenv("LIBGL_NOSHADERLOD");
+    unsetenv("LIBGL_SHRINK");
+    unsetenv("LIBGL_NOVAOCACHE");
+
+    // 2. Apply Benchmark & FPS log (cadence metrics)
+    if (getPrefBool(@"experimental.benchmark")) {
+        setenv("AMETHYST_RENDER_BENCHMARK", "1", 1);
+        NSLog(@"[Amethyst Experimental] Enabled Render Benchmark");
+    }
+    if (getPrefBool(@"experimental.fps_log")) {
+        setenv("AMETHYST_FPS_LOG", "1", 1);
+        NSLog(@"[Amethyst Experimental] Enabled FPS Log");
+    }
+
+    // Check renderer - only apply GL4ES flags if using GL4ES
+    NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
+    BOOL isGL4ES = (!renderer || [renderer isEqualToString:@"auto"] || [renderer containsString:@"gl4es"]);
+
+    if (isGL4ES) {
+        // 3. Shader Error Diagnostics
+        if (getPrefBool(@"experimental.shader_error_log")) {
+            setenv("LIBGL_LOGSHADERERROR", "1", 1);
+            setenv("LIBGL_SILENTSTUB", "0", 1);
+            NSLog(@"[Amethyst Experimental] Enabled Shader Error & Stub Diagnostics");
+        }
+
+        // 4. Draw Call Batching
+        NSString *batch = getPrefObject(@"experimental.draw_batching");
+        if (batch && ![batch isEqualToString:@"default"]) {
+            if ([batch isEqualToString:@"off"]) {
+                setenv("LIBGL_BATCH", "0", 1);
+            } else {
+                setenv("LIBGL_BATCH", batch.UTF8String, 1);
+            }
+            NSLog(@"[Amethyst Experimental] LIBGL_BATCH set to: %@", batch);
+        }
+
+        // 5. VBO Compatibility / Performance
+        NSString *vbo = getPrefObject(@"experimental.use_vbo");
+        if (vbo && ![vbo isEqualToString:@"default"]) {
+            setenv("LIBGL_USEVBO", vbo.UTF8String, 1);
+            NSLog(@"[Amethyst Experimental] LIBGL_USEVBO set to: %@", vbo);
+        }
+
+        // 6. Texture & Mipmap Compatibility
+        NSString *mipmap = getPrefObject(@"experimental.mipmap_mode");
+        if (mipmap && ![mipmap isEqualToString:@"default"]) {
+            setenv("LIBGL_MIPMAP", mipmap.UTF8String, 1);
+            NSLog(@"[Amethyst Experimental] LIBGL_MIPMAP set to: %@", mipmap);
+        }
+
+        // 7. Shader Compatibility Mode
+        if (getPrefBool(@"experimental.no_shader_lod")) {
+            setenv("LIBGL_NOSHADERLOD", "1", 1);
+            NSLog(@"[Amethyst Experimental] Enabled LIBGL_NOSHADERLOD=1");
+        }
+
+        // 8. Texture Memory Saver
+        NSString *shrink = getPrefObject(@"experimental.shrink_texture");
+        if (shrink && ![shrink isEqualToString:@"default"]) {
+            setenv("LIBGL_SHRINK", shrink.UTF8String, 1);
+            NSLog(@"[Amethyst Experimental] LIBGL_SHRINK set to: %@", shrink);
+        }
+
+        // 9. VAO Cache Compatibility
+        if (getPrefBool(@"experimental.no_vao_cache")) {
+            setenv("LIBGL_NOVAOCACHE", "1", 1);
+            NSLog(@"[Amethyst Experimental] Enabled LIBGL_NOVAOCACHE=1");
+        }
+    }
+}
+
 void init_loadCustomEnv() {
     NSString *envvars = getPrefObject(@"java.env_variables");
     if (envvars == nil) return;
@@ -104,6 +185,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     NSLog(@"[JavaLauncher] Beginning JVM launch");
 
     init_loadDefaultEnv();
+    init_applyExperimentalSettings();
     init_loadCustomEnv();
 
     DeviceGetJITFlags(YES); // refresh JIT flags right after loading env
@@ -354,6 +436,14 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         for (NSString *arg in launchTarget[@"arguments"][@"jvm_processed"]) {
             margv[++margc] = arg.UTF8String;
         }
+    }
+
+    if (getPrefBool(@"experimental.low_stutter_jvm")) {
+        NSLog(@"[Amethyst Experimental] Applying Low-Stutter G1GC JVM profile flags");
+        margv[++margc] = "-XX:+UseG1GC";
+        margv[++margc] = "-XX:MaxGCPauseMillis=20";
+        margv[++margc] = "-XX:G1ReservePercent=15";
+        margv[++margc] = "-XX:InitiatingHeapOccupancyPercent=45";
     }
 
     init_loadCustomJvmFlags(&margc, (const char **)margv);

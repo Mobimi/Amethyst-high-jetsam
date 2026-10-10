@@ -3,6 +3,8 @@
 #import "SurfaceViewController.h"
 
 #include <dlfcn.h>
+#include <stdint.h>
+#include <time.h>
 #include "bridge_tbl.h"
 #include "environ.h"
 #include "gl_bridge.h"
@@ -185,7 +187,96 @@ void gl_make_current(gl_render_window_t* bundle) {
     }
 }
 
+static void amethyst_benchmark_on_swap(void) {
+    static uint64_t s_last_swap_time_ns = 0;
+    static uint64_t s_window_start_time_ns = 0;
+    static uint64_t s_frame_count = 0;
+    static uint32_t s_drops_33ms = 0;
+    static uint32_t s_stutters_50ms = 0;
+    static uint64_t s_max_interval_ns = 0;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t now_ns = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+
+    if (s_last_swap_time_ns == 0) {
+        s_last_swap_time_ns = now_ns;
+        s_window_start_time_ns = now_ns;
+        return;
+    }
+
+    uint64_t interval_ns = now_ns - s_last_swap_time_ns;
+    s_last_swap_time_ns = now_ns;
+    s_frame_count++;
+
+    if (interval_ns > s_max_interval_ns) {
+        s_max_interval_ns = interval_ns;
+    }
+    if (interval_ns > 33333333ULL) { // > 33.3ms (cadence drop below ~30 fps)
+        s_drops_33ms++;
+    }
+    if (interval_ns > 50000000ULL) { // > 50.0ms (cadence stutter below ~20 fps)
+        s_stutters_50ms++;
+    }
+
+    uint64_t window_duration_ns = now_ns - s_window_start_time_ns;
+    if (window_duration_ns >= 5000000000ULL) { // 5.0 seconds window
+        double duration_sec = (double)window_duration_ns / 1.0e9;
+        double avg_fps = (double)s_frame_count / duration_sec;
+        double max_interval_ms = (double)s_max_interval_ns / 1.0e6;
+
+        const char *bench_env = getenv("AMETHYST_RENDER_BENCHMARK");
+        const char *fps_env = getenv("AMETHYST_FPS_LOG");
+        BOOL is_bench = (bench_env && strcmp(bench_env, "1") == 0);
+        BOOL is_fps = (fps_env && strcmp(fps_env, "1") == 0);
+
+        if (is_bench) {
+            const char *renderer = getenv("RENDERER");
+            const char *batch = getenv("LIBGL_BATCH");
+            const char *vbo = getenv("LIBGL_USEVBO");
+            const char *mipmap = getenv("LIBGL_MIPMAP");
+            const char *noshaderlod = getenv("LIBGL_NOSHADERLOD");
+            const char *shrink = getenv("LIBGL_SHRINK");
+            const char *novaocache = getenv("LIBGL_NOVAOCACHE");
+
+            NSLog(@"[Amethyst Benchmark] ===== 5.0s Window Summary =====");
+            NSLog(@"[Amethyst Benchmark] Renderer: %s", renderer ? renderer : "unknown");
+            NSLog(@"[Amethyst Benchmark] Flags: BATCH=%s, VBO=%s, MIPMAP=%s, NOSHADERLOD=%s, SHRINK=%s, NOVAOCACHE=%s",
+                  batch ? batch : "default",
+                  vbo ? vbo : "default",
+                  mipmap ? mipmap : "default",
+                  noshaderlod ? noshaderlod : "off",
+                  shrink ? shrink : "default",
+                  novaocache ? novaocache : "off");
+            NSLog(@"[Amethyst Benchmark] Swap Cadence: Est. FPS: %.1f | Frames: %llu | Max Interval: %.2f ms",
+                  avg_fps, s_frame_count, max_interval_ms);
+            NSLog(@"[Amethyst Benchmark] Frame Gaps: >33.3ms (drops): %u | >50.0ms (stutter spikes): %u",
+                  s_drops_33ms, s_stutters_50ms);
+            NSLog(@"[Amethyst Benchmark] ===================================");
+        } else if (is_fps) {
+            NSLog(@"[Amethyst FPS] Cadence: %.1f FPS (Frames: %llu, window: %.1fs, max frame gap: %.1f ms, drops >33ms: %u, stutters >50ms: %u)",
+                  avg_fps, s_frame_count, duration_sec, max_interval_ms, s_drops_33ms, s_stutters_50ms);
+        }
+
+        s_window_start_time_ns = now_ns;
+        s_frame_count = 0;
+        s_drops_33ms = 0;
+        s_stutters_50ms = 0;
+        s_max_interval_ns = 0;
+    }
+}
+
 void gl_swap_buffers() {
+    static int s_metrics_active = -1;
+    if (__builtin_expect(s_metrics_active == -1, 0)) {
+        const char *b = getenv("AMETHYST_RENDER_BENCHMARK");
+        const char *f = getenv("AMETHYST_FPS_LOG");
+        s_metrics_active = ((b && strcmp(b, "1") == 0) || (f && strcmp(f, "1") == 0)) ? 1 : 0;
+    }
+    if (__builtin_expect(s_metrics_active == 1, 0)) {
+        amethyst_benchmark_on_swap();
+    }
+
     if (!handle.eglSwapBuffers(g_EglDisplay, currentBundle->gl.surface) && handle.eglGetError() == EGL_BAD_SURFACE) {
         NSLog(@"eglSwapBuffers error 0x%x", handle.eglGetError());
         //stopSwapBuffers = true;
