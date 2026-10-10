@@ -178,11 +178,6 @@ void APIENTRY_GL4ES gl4es_glBlendFunc(GLenum sfactor, GLenum dfactor) {
 
     FLUSH_BEGINEND;
 
-    glstate->blendsfactorrgb = sfactor;
-    glstate->blenddfactorrgb = dfactor;
-    glstate->blendsfactoralpha = sfactor;
-    glstate->blenddfactoralpha = dfactor;
-
     if(globals4es.shaderblend) {
         int srcrgb = fpeBlendFunc(sfactor);
         int dstrgb = fpeBlendFunc(dfactor);
@@ -271,6 +266,11 @@ void APIENTRY_GL4ES gl4es_glBlendFunc(GLenum sfactor, GLenum dfactor) {
             amethyst_probe_backend_call("glBlendFunc", __FILE__, __LINE__);
         }
     }
+
+    glstate->blendsfactorrgb = sfactor;
+    glstate->blenddfactorrgb = dfactor;
+    glstate->blendsfactoralpha = sfactor;
+    glstate->blenddfactoralpha = dfactor;
 }
 AliasExport(void,glBlendFunc,,(GLenum sfactor, GLenum dfactor));
 
@@ -281,9 +281,6 @@ void APIENTRY_GL4ES gl4es_glBlendEquation(GLenum mode) {
     if(glstate->blendeqrgb==mode
     && glstate->blendeqalpha==mode)
         return;
-
-    glstate->blendeqrgb = mode;
-    glstate->blendeqalpha = mode;
 
     if(globals4es.shaderblend) {
         int rgb = fpeBlendEq(mode);
@@ -306,6 +303,9 @@ void APIENTRY_GL4ES gl4es_glBlendEquation(GLenum mode) {
             amethyst_probe_backend_call("glBlendEquation", __FILE__, __LINE__);
         }
     }
+
+    glstate->blendeqrgb = mode;
+    glstate->blendeqalpha = mode;
 }
 AliasExport(void,glBlendEquation,,(GLenum mode));
 AliasExport(void,glBlendEquation,EXT,(GLenum mode));
