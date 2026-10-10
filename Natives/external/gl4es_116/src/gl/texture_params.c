@@ -992,6 +992,14 @@ void realize_textures(int drawing) {
                    mm_auto, mm_need, mm_done,
                    min_f, mag_f);
         }
+        if (s_tex_trace_enabled == 1 && drawing != 0 && tmp != 0 && (!tex || !tex->valid)) {
+            static int s_warn = 0;
+            if (s_warn < 100) {
+                s_warn++;
+                printf("[Amethyst TexTrace] WARN unit=%d en=0x%X tgt=%d tex=%u valid=%d -> ve khong texture (trang)\n",
+                       i, tmp, tgt, tex ? tex->texture : 0, tex ? (int)tex->valid : 0);
+            }
+        }
     }
     glstate->bound_changed = 0;
 }
