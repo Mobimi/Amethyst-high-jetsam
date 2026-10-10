@@ -237,22 +237,22 @@ void APIENTRY_GL4ES gl4es_glBlendFunc(GLenum sfactor, GLenum dfactor) {
         switch(dfactor) {
             #if 0
             case GL_DST_COLOR:
-                sfactor = GL_ONE;   // approx...
+                dfactor = GL_ONE;   // approx...
                 break;
             case GL_ONE_MINUS_DST_COLOR:
-                sfactor = GL_ZERO;  // not sure it make sense...
+                dfactor = GL_ZERO;  // not sure it make sense...
                 break;
             #endif
             // here, we need support for glBlendColor...
             case GL_CONSTANT_COLOR:
             case GL_CONSTANT_ALPHA:
                 if(hardext.blendcolor==0)
-                    sfactor = GL_ONE;
+                    dfactor = GL_ONE;
                 break;
             case GL_ONE_MINUS_CONSTANT_COLOR:
             case GL_ONE_MINUS_CONSTANT_ALPHA:
                 if(hardext.blendcolor==0)
-                    sfactor = GL_ZERO;
+                    dfactor = GL_ZERO;
                 break;
             default:
                 break;
