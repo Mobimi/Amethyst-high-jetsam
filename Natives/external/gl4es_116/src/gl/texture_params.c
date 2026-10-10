@@ -8,6 +8,7 @@
 #include "debug.h"
 #include "enum_info.h"
 #include "envvars.h"
+#include "error_trace.h"
 #include "fpe.h"
 #include "framebuffers.h"
 #include "gles.h"
@@ -197,6 +198,8 @@ void APIENTRY_GL4ES gl4es_glBindTexture(GLenum target, GLuint texture) {
         glstate->texture.bound[glstate->texture.active][itarget] = tex;
 
         LOAD_GLES(glBindTexture);
+        amethyst_trace_backend_record("glBindTexture", target, (GLenum)(tex?tex->glname:0), 0, __FILE__, __LINE__);
+        amethyst_validate_backend_enum("glBindTexture", target, __FILE__, __LINE__);
         switch(target) {
             // cube map are bounded immediatly, other are defered and will be applied with realize_bound or realize_textures
             case GL_TEXTURE_CUBE_MAP:
@@ -344,8 +347,11 @@ void APIENTRY_GL4ES gl4es_glTexParameterfv(GLenum target, GLenum pname, const GL
         }
         FLUSH_BEGINEND;
         realize_bound(glstate->texture.active, target);
+        amethyst_trace_backend_record("glTexParameterfv", rtarget, pname, (GLint)params[0], __FILE__, __LINE__);
+        amethyst_validate_backend_enum("glTexParameterfv", (GLenum)params[0], __FILE__, __LINE__);
         gles_glTexParameterfv(rtarget, pname, params);
         errorGL();
+        amethyst_probe_backend_call("glTexParameterfv", __FILE__, __LINE__);
     }
 }
 

@@ -22,9 +22,13 @@ GLenum APIENTRY_GL4ES gl4es_glGetError(void) {
         return GL_NO_ERROR;
 	LOAD_GLES(glGetError);
     GLenum err = GL_NO_ERROR;
+    int from_backend = 0;
     if(!glstate->type_error) {
         // check glGetError, forget everything else
         err = gles_glGetError();
+        if(err != GL_NO_ERROR) {
+            from_backend = 1;
+        }
         // If no error, then check "shim" error
         if(err==GL_NO_ERROR)
             err = glstate->shim_error;
@@ -35,6 +39,10 @@ GLenum APIENTRY_GL4ES gl4es_glGetError(void) {
         gles_glGetError();  // purge error log
     glstate->type_error = 2;
     glstate->shim_error = GL_NO_ERROR;
+
+    if(err != GL_NO_ERROR && amethyst_is_error_trace_enabled()) {
+        amethyst_trace_report_gl_error(err, from_backend);
+    }
 
 	return err;
 }

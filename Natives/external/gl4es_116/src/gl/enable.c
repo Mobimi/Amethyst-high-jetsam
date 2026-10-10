@@ -259,7 +259,14 @@ static void proxy_glEnable(GLenum cap, bool enable, void (APIENTRY_GLES *next)(G
             break;
 
         
-        default: errorGL(); FLUSH_BEGINEND; realize_active(); next(cap); break;
+        default:
+            errorGL();
+            FLUSH_BEGINEND;
+            realize_active();
+            amethyst_trace_backend_record("glEnable/Disable", cap, 0, 0, __FILE__, __LINE__);
+            next(cap);
+            amethyst_probe_backend_call("glEnable/Disable", __FILE__, __LINE__);
+            break;
     }
     #undef proxy_GO
     #undef GO

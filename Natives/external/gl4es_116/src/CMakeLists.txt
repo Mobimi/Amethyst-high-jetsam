@@ -18,6 +18,7 @@ SET(GL_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/drawing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/enable.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/envvars.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/gl/error_trace.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/eval.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/face.c
     ${CMAKE_CURRENT_SOURCE_DIR}/gl/fog.c

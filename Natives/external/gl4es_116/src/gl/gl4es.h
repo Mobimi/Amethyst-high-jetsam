@@ -10,6 +10,7 @@
 #include "wrap/gles.h"
 #include "gles.h"
 #include "glstate.h"
+#include "error_trace.h"
 
 packed_call_t* APIENTRY_GL4ES glCopyPackedCall(const packed_call_t *packed);
 
@@ -105,12 +106,14 @@ static inline void errorGL() {	// next glGetError will be from GL
     else if(glstate->type_error==2)
         glstate->type_error = 1;    // will need to read glGetError...
 }
-static inline void errorShim(GLenum error) {	// next glGetError will be "error" from gl4es
+static inline void _gl4es_errorShim(GLenum error, const char *file, int line, const char *func) {	// next glGetError will be "error" from gl4es
     if(glstate->type_error && glstate->shim_error==GL_NO_ERROR)
 	    glstate->type_error = 1;
     if(glstate->shim_error == GL_NO_ERROR)
 	    glstate->shim_error = error;
+    amethyst_trace_error_shim(error, file, line, func);
 }
+#define errorShim(err) _gl4es_errorShim((err), __FILE__, __LINE__, __func__)
 static inline void noerrorShim() {
     if(glstate->type_error && glstate->shim_error==GL_NO_ERROR)
 	    glstate->type_error = 1;

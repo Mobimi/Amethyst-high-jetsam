@@ -120,7 +120,9 @@ void APIENTRY_GL4ES gl4es_glBlendFuncSeparate(GLenum sfactorRGB, GLenum dfactorR
                 gl4es_glBlendFunc(sfactorRGB, dfactorRGB);
         } else
     #endif
+        amethyst_trace_backend_record("glBlendFuncSeparate", sfactorRGB, dfactorRGB, sfactorAlpha, __FILE__, __LINE__);
         gles_glBlendFuncSeparate(sfactorRGB, dfactorRGB, sfactorAlpha, dfactorAlpha);
+        amethyst_probe_backend_call("glBlendFuncSeparate", __FILE__, __LINE__);
     }
 
     glstate->blendsfactorrgb = sfactorRGB;
@@ -153,7 +155,11 @@ void APIENTRY_GL4ES gl4es_glBlendEquationSeparate(GLenum modeRGB, GLenum modeA) 
         #ifndef PANDORA
         if(gles_glBlendEquationSeparate)
         #endif
-        gles_glBlendEquationSeparate(modeRGB, modeA);
+        {
+            amethyst_trace_backend_record("glBlendEquationSeparate", modeRGB, modeA, 0, __FILE__, __LINE__);
+            gles_glBlendEquationSeparate(modeRGB, modeA);
+            amethyst_probe_backend_call("glBlendEquationSeparate", __FILE__, __LINE__);
+        }
     }
 
     glstate->blendeqrgb = modeRGB;
@@ -259,7 +265,11 @@ void APIENTRY_GL4ES gl4es_glBlendFunc(GLenum sfactor, GLenum dfactor) {
     #ifdef ODROID
         if(gles_glBlendFunc)
     #endif
-        gles_glBlendFunc(sfactor, dfactor);
+        {
+            amethyst_trace_backend_record("glBlendFunc", sfactor, dfactor, 0, __FILE__, __LINE__);
+            gles_glBlendFunc(sfactor, dfactor);
+            amethyst_probe_backend_call("glBlendFunc", __FILE__, __LINE__);
+        }
     }
 }
 AliasExport(void,glBlendFunc,,(GLenum sfactor, GLenum dfactor));
@@ -290,7 +300,11 @@ void APIENTRY_GL4ES gl4es_glBlendEquation(GLenum mode) {
         #ifdef ODROID
         if(gles_glBlendEquation)
         #endif
-        gles_glBlendEquation(mode);
+        {
+            amethyst_trace_backend_record("glBlendEquation", mode, 0, 0, __FILE__, __LINE__);
+            gles_glBlendEquation(mode);
+            amethyst_probe_backend_call("glBlendEquation", __FILE__, __LINE__);
+        }
     }
 }
 AliasExport(void,glBlendEquation,,(GLenum mode));
