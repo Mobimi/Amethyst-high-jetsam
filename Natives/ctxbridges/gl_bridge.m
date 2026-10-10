@@ -187,9 +187,15 @@ void gl_make_current(gl_render_window_t* bundle) {
     }
 }
 
+#import <os/lock.h>
+
 static int s_benchmark_enabled = 0;
 static int s_fps_log_enabled = 0;
+static int s_hud_active = 0;
 static int s_metrics_active = 0;
+
+static os_unfair_lock s_metrics_lock = OS_UNFAIR_LOCK_INIT;
+static amethyst_metrics_snapshot_t s_live_snapshot = {0};
 
 static uint64_t s_last_swap_time_ns = 0;
 static uint64_t s_window_start_time_ns = 0;
@@ -198,12 +204,41 @@ static uint32_t s_drops_33ms = 0;
 static uint32_t s_stutters_50ms = 0;
 static uint64_t s_max_interval_ns = 0;
 
+static uint64_t s_hud_window_start_ns = 0;
+static uint32_t s_hud_rolling_frames = 0;
+static double s_current_fps = 0.0;
+
+static void update_metrics_active_flag(void) {
+    s_metrics_active = (s_benchmark_enabled || s_fps_log_enabled || s_hud_active) ? 1 : 0;
+}
+
+static void update_snapshot_renderer_name(void) {
+    const char *rend = getenv("RENDERER");
+    os_unfair_lock_lock(&s_metrics_lock);
+    if (!rend) {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "Unknown");
+    } else if (strcmp(rend, RENDERER_NAME_GL4ES_116) == 0) {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "GL4ES 1.1.6");
+    } else if (strcmp(rend, RENDERER_NAME_GL4ES) == 0) {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "GL4ES 1.1.4");
+    } else if (strcmp(rend, RENDERER_NAME_MTL_ANGLE) == 0) {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "ANGLE (Desktop GL)");
+    } else if (strcmp(rend, RENDERER_NAME_MOBILEGLUES) == 0) {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "MobileGLUES");
+    } else if (strcmp(rend, RENDERER_NAME_VK_ZINK) == 0) {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "OSMesa/Zink");
+    } else {
+        snprintf(s_live_snapshot.renderer, sizeof(s_live_snapshot.renderer), "%s", rend);
+    }
+    os_unfair_lock_unlock(&s_metrics_lock);
+}
+
 void amethyst_refresh_benchmark_state(void) {
     const char *b = getenv("AMETHYST_RENDER_BENCHMARK");
     const char *f = getenv("AMETHYST_FPS_LOG");
-    int new_bench = (b && strcmp(b, "1") == 0) ? 1 : 0;
-    int new_fps = (f && strcmp(f, "1") == 0) ? 1 : 0;
-    int new_metrics = (new_bench || new_fps) ? 1 : 0;
+    s_benchmark_enabled = (b && strcmp(b, "1") == 0) ? 1 : 0;
+    s_fps_log_enabled = (f && strcmp(f, "1") == 0) ? 1 : 0;
+    update_metrics_active_flag();
 
     // Reset stats when refreshing, so downtime between launches is not counted as a spike
     s_last_swap_time_ns = 0;
@@ -212,12 +247,50 @@ void amethyst_refresh_benchmark_state(void) {
     s_drops_33ms = 0;
     s_stutters_50ms = 0;
     s_max_interval_ns = 0;
+    s_hud_window_start_ns = 0;
+    s_hud_rolling_frames = 0;
+    s_current_fps = 0.0;
 
-    s_benchmark_enabled = new_bench;
-    s_fps_log_enabled = new_fps;
-    s_metrics_active = new_metrics;
+    update_snapshot_renderer_name();
 
-    NSLog(@"[Amethyst Benchmark] State refreshed: benchmark=%d, fps_log=%d", s_benchmark_enabled, s_fps_log_enabled);
+    NSLog(@"[Amethyst Benchmark] State refreshed: benchmark=%d, fps_log=%d, hud=%d",
+          s_benchmark_enabled, s_fps_log_enabled, s_hud_active);
+}
+
+void amethyst_set_hud_active(int active) {
+    s_hud_active = active ? 1 : 0;
+    update_metrics_active_flag();
+
+    if (s_hud_active) {
+        update_snapshot_renderer_name();
+    } else if (!s_metrics_active) {
+        s_last_swap_time_ns = 0;
+        s_window_start_time_ns = 0;
+        s_frame_count = 0;
+        s_drops_33ms = 0;
+        s_stutters_50ms = 0;
+        s_max_interval_ns = 0;
+        s_hud_window_start_ns = 0;
+        s_hud_rolling_frames = 0;
+        s_current_fps = 0.0;
+    }
+}
+
+void amethyst_get_metrics_snapshot(amethyst_metrics_snapshot_t *out_snapshot) {
+    if (!out_snapshot) return;
+
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    uint64_t now_ns = (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+
+    os_unfair_lock_lock(&s_metrics_lock);
+    *out_snapshot = s_live_snapshot;
+    // If no swap has occurred for over 1.0s, the game is paused/idle/loading
+    if (s_last_swap_time_ns == 0 || (now_ns > s_last_swap_time_ns && (now_ns - s_last_swap_time_ns) > 1000000000ULL)) {
+        out_snapshot->estimated_fps = 0.0;
+        out_snapshot->frame_time_ms = 0.0;
+    }
+    os_unfair_lock_unlock(&s_metrics_lock);
 }
 
 static void amethyst_benchmark_on_swap(void) {
@@ -228,12 +301,28 @@ static void amethyst_benchmark_on_swap(void) {
     if (s_last_swap_time_ns == 0) {
         s_last_swap_time_ns = now_ns;
         s_window_start_time_ns = now_ns;
+        s_hud_window_start_ns = now_ns;
+        s_hud_rolling_frames = 0;
         return;
     }
 
     uint64_t interval_ns = now_ns - s_last_swap_time_ns;
     s_last_swap_time_ns = now_ns;
+
+    // Loading / pause / resume gap filter: intervals > 1.0s are treated as discontinuity
+    if (interval_ns > 1000000000ULL) {
+        s_window_start_time_ns = now_ns;
+        s_hud_window_start_ns = now_ns;
+        s_hud_rolling_frames = 0;
+        s_frame_count = 0;
+        s_drops_33ms = 0;
+        s_stutters_50ms = 0;
+        s_max_interval_ns = 0;
+        return;
+    }
+
     s_frame_count++;
+    s_hud_rolling_frames++;
 
     if (interval_ns > s_max_interval_ns) {
         s_max_interval_ns = interval_ns;
@@ -245,38 +334,62 @@ static void amethyst_benchmark_on_swap(void) {
         s_stutters_50ms++;
     }
 
+    // Update rolling HUD FPS calculation (~every 500ms)
+    uint64_t hud_elapsed_ns = now_ns - s_hud_window_start_ns;
+    if (hud_elapsed_ns >= 500000000ULL) {
+        if (s_hud_rolling_frames >= 2) {
+            s_current_fps = (double)s_hud_rolling_frames / ((double)hud_elapsed_ns / 1.0e9);
+        }
+        s_hud_window_start_ns = now_ns;
+        s_hud_rolling_frames = 0;
+    }
+
+    // Thread-safe update of live metrics snapshot
+    double frame_time_ms = (double)interval_ns / 1.0e6;
+    os_unfair_lock_lock(&s_metrics_lock);
+    s_live_snapshot.estimated_fps = s_current_fps;
+    s_live_snapshot.frame_time_ms = frame_time_ms;
+    s_live_snapshot.max_gap_ms = (double)s_max_interval_ns / 1.0e6;
+    s_live_snapshot.drops_33ms = s_drops_33ms;
+    s_live_snapshot.stutters_50ms = s_stutters_50ms;
+    os_unfair_lock_unlock(&s_metrics_lock);
+
+    // Benchmark and FPS Log reporting window (>= 5.0 seconds)
     uint64_t window_duration_ns = now_ns - s_window_start_time_ns;
-    if (window_duration_ns >= 5000000000ULL) { // 5.0 seconds window
+    if (window_duration_ns >= 5000000000ULL) {
         double duration_sec = (double)window_duration_ns / 1.0e9;
-        double avg_fps = (double)s_frame_count / duration_sec;
-        double max_interval_ms = (double)s_max_interval_ns / 1.0e6;
 
-        if (s_benchmark_enabled) {
-            const char *renderer = getenv("RENDERER");
-            const char *batch = getenv("LIBGL_BATCH");
-            const char *vbo = getenv("LIBGL_USEVBO");
-            const char *mipmap = getenv("LIBGL_MIPMAP");
-            const char *noshaderlod = getenv("LIBGL_NOSHADERLOD");
-            const char *shrink = getenv("LIBGL_SHRINK");
-            const char *novaocache = getenv("LIBGL_NOVAOCACHE");
+        if (s_frame_count >= 5) {
+            double avg_fps = (double)s_frame_count / duration_sec;
+            double max_interval_ms = (double)s_max_interval_ns / 1.0e6;
 
-            NSLog(@"[Amethyst Benchmark] ===== 5.0s Window Summary =====");
-            NSLog(@"[Amethyst Benchmark] Renderer: %s", renderer ? renderer : "unknown");
-            NSLog(@"[Amethyst Benchmark] Flags: BATCH=%s, VBO=%s, MIPMAP=%s, NOSHADERLOD=%s, SHRINK=%s, NOVAOCACHE=%s",
-                  batch ? batch : "default",
-                  vbo ? vbo : "default",
-                  mipmap ? mipmap : "default",
-                  noshaderlod ? noshaderlod : "off",
-                  shrink ? shrink : "default",
-                  novaocache ? novaocache : "off");
-            NSLog(@"[Amethyst Benchmark] Swap-Completion Cadence: Est. FPS: %.1f | Frames: %llu | Max Interval: %.2f ms",
-                  avg_fps, s_frame_count, max_interval_ms);
-            NSLog(@"[Amethyst Benchmark] Frame Gaps: >33.3ms (drops): %u | >50.0ms (stutter spikes): %u",
-                  s_drops_33ms, s_stutters_50ms);
-            NSLog(@"[Amethyst Benchmark] ===================================");
-        } else if (s_fps_log_enabled) {
-            NSLog(@"[Amethyst FPS] Swap-Completion Cadence: %.1f FPS (Frames: %llu, window: %.1fs, max gap: %.1f ms, drops >33ms: %u, stutters >50ms: %u)",
-                  avg_fps, s_frame_count, duration_sec, max_interval_ms, s_drops_33ms, s_stutters_50ms);
+            if (s_benchmark_enabled) {
+                const char *renderer = getenv("RENDERER");
+                const char *batch = getenv("LIBGL_BATCH");
+                const char *vbo = getenv("LIBGL_USEVBO");
+                const char *mipmap = getenv("LIBGL_MIPMAP");
+                const char *noshaderlod = getenv("LIBGL_NOSHADERLOD");
+                const char *shrink = getenv("LIBGL_SHRINK");
+                const char *novaocache = getenv("LIBGL_NOVAOCACHE");
+
+                NSLog(@"[Amethyst Benchmark] ===== %.1fs Window Summary =====", duration_sec);
+                NSLog(@"[Amethyst Benchmark] Renderer: %s", renderer ? renderer : "unknown");
+                NSLog(@"[Amethyst Benchmark] Flags: BATCH=%s, VBO=%s, MIPMAP=%s, NOSHADERLOD=%s, SHRINK=%s, NOVAOCACHE=%s",
+                      batch ? batch : "default",
+                      vbo ? vbo : "default",
+                      mipmap ? mipmap : "default",
+                      noshaderlod ? noshaderlod : "off",
+                      shrink ? shrink : "default",
+                      novaocache ? novaocache : "off");
+                NSLog(@"[Amethyst Benchmark] Swap-Completion Cadence: Est. FPS: %.1f | Frames: %llu | Max Interval: %.2f ms",
+                      avg_fps, (unsigned long long)s_frame_count, max_interval_ms);
+                NSLog(@"[Amethyst Benchmark] Frame Gaps: >33.3ms (drops): %u | >50.0ms (stutter spikes): %u",
+                      s_drops_33ms, s_stutters_50ms);
+                NSLog(@"[Amethyst Benchmark] ===================================");
+            } else if (s_fps_log_enabled) {
+                NSLog(@"[Amethyst FPS] Swap-Completion Cadence: %.1f FPS (Frames: %llu, window: %.1fs, max gap: %.1f ms, drops >33ms: %u, stutters >50ms: %u)",
+                      avg_fps, (unsigned long long)s_frame_count, duration_sec, max_interval_ms, s_drops_33ms, s_stutters_50ms);
+            }
         }
 
         s_window_start_time_ns = now_ns;

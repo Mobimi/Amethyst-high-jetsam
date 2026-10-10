@@ -7,6 +7,7 @@
 "game.menu.confirm.force_close" = "Bạn có chắc muốn bắt buộc thoát?";
 "game.menu.log_output" = "Nhật ký ra ";
 "game.menu.custom_controls" = "Tùy chỉnh điều khiển";
+"game.menu.diagnostics" = "Đo đạc";
 
 "game.note.airplay" = "Minecraft đang được hiển thị trên màn hình AirPlay";
 

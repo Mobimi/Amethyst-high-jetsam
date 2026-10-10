@@ -23,6 +23,7 @@
 
 #include "glfw_keycodes.h"
 #include "utils.h"
+#include "gl_bridge.h"
 
 #include <dlfcn.h>
 
@@ -82,9 +83,17 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
     return self;
 }
 
+- (void)dealloc {
+    [self.diagnosticsHUDTimer invalidate];
+    self.diagnosticsHUDTimer = nil;
+    amethyst_set_hud_active(0);
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.isDiagnosticsHUDEnabled = NO;
+    amethyst_set_hud_active(0);
     isControlModifiable = NO;
     self.isMacCatalystApp = NSProcessInfo.processInfo.isMacCatalystApp;
     // Load MetalHUD library
@@ -127,7 +136,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
     self.ctrlView = [[ControlLayout alloc] initWithFrame:getSafeArea(self.view.frame)];
 
     [self performSelector:@selector(initCategory_Navigation)];
-    
+
     self.surfaceView = [[GameSurfaceView alloc] initWithFrame:self.view.frame];
     self.surfaceView.layer.contentsScale = screenScale * resolutionScale;
     self.surfaceView.layer.magnificationFilter = self.surfaceView.layer.minificationFilter = kCAFilterNearest;
@@ -144,7 +153,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
 
     [self performSelector:@selector(setupCategory_Navigation)];
 
-    
+
     UIHoverGestureRecognizer *hoverGesture = [[NSClassFromString(@"UIHoverGestureRecognizer") alloc] initWithTarget:self action:@selector(surfaceOnHover:)];
     [self.touchView addGestureRecognizer:hoverGesture];
 
@@ -172,7 +181,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
     self.longPressGesture.cancelsTouchesInView = NO;
     self.longPressGesture.delegate = self;
     [self.touchView addGestureRecognizer:self.longPressGesture];
-    
+
     self.longPressTwoGesture = [[UILongPressGestureRecognizer alloc]initWithTarget:self action:@selector(keyboardGesture:)];
     self.longPressTwoGesture.numberOfTouchesRequired = 2;
     self.longPressTwoGesture.allowedTouchTypes = @[@(UITouchTypeDirect)];
@@ -240,7 +249,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
     if (GCMouse.current != nil) {
         [self registerMouseCallbacks:GCMouse.current];
     }
-    
+
 
     // TODO: deal with multiple controllers by letting users decide which one to use?
     self.controllerConnectCallback = [[NSNotificationCenter defaultCenter] addObserverForName:GCControllerDidConnectNotification object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) {
@@ -513,8 +522,10 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
         // Update game resolution
         [self updateSavedResolution];
         [GyroInput updateOrientation];
+        [self clampHUDPosition];
     } completion:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
         virtualMouseFrame = self.mousePointerView.frame;
+        [self clampHUDPosition];
     }];
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
 }
@@ -553,7 +564,27 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
 
 #pragma mark - Input: on-surface functions
 
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    BOOL isHUDTouch = (self.diagnosticsHUDView && !self.diagnosticsHUDView.hidden &&
+                       (touch.view == self.diagnosticsHUDView || [touch.view isDescendantOfView:self.diagnosticsHUDView]));
+    BOOL isHUDGesture = (gestureRecognizer.view == self.diagnosticsHUDView || [gestureRecognizer.view isDescendantOfView:self.diagnosticsHUDView]);
+
+    if (isHUDTouch) {
+        return isHUDGesture;
+    } else {
+        return !isHUDGesture;
+    }
+}
+
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+    BOOL isHUD1 = (gestureRecognizer.view == self.diagnosticsHUDView || [gestureRecognizer.view isDescendantOfView:self.diagnosticsHUDView]);
+    BOOL isHUD2 = (otherGestureRecognizer.view == self.diagnosticsHUDView || [otherGestureRecognizer.view isDescendantOfView:self.diagnosticsHUDView]);
+    if (isHUD1 && isHUD2) {
+        return YES;
+    }
+    if (isHUD1 || isHUD2) {
+        return NO;
+    }
     return YES;
 }
 
@@ -600,7 +631,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             } /* else if ((event == ACTION_MOVE || event == ACTION_UP) && slot == -1 && currentHotbarSlot != -1) {
                 return;
             } */
-            
+
             if (event == ACTION_DOWN && slot == -1) {
                 currentHotbarSlot = -1;
             }
@@ -633,7 +664,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             handled = YES;
         }
     }
-    
+
 
     if (!handled) {
         [super pressesBegan:presses withEvent:event];
@@ -648,7 +679,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             handled = YES;
         }
     }
-    
+
 
     if (!handled) {
         [super pressesEnded:presses withEvent:event];
@@ -704,7 +735,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             [self.lightHaptic impactOccurred];
         }
     }
-    
+
     if (!self.shouldTriggerClick) return;
 
     if (sender.state == UIGestureRecognizerStateRecognized) {
@@ -729,7 +760,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             [self.lightHaptic impactOccurred];
         }
     }
-    
+
     if (sender.state == UIGestureRecognizerStateRecognized && isGrabbing) {
         CGFloat screenScale = [[UIScreen mainScreen] scale];
         CGPoint point = [sender locationInView:self.rootView];
@@ -744,7 +775,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
 
 - (void)surfaceOnHover:(UIGestureRecognizer *)sender {
     if (isGrabbing) return;
-    
+
     CGPoint point = [sender locationInView:self.rootView];
     // NSLog(@"Mouse move!!");
     // NSLog(@"Mouse pos = %f, %f", point.x, point.y);
@@ -772,7 +803,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             [self.mediumHaptic impactOccurred];
         }
     }
-    
+
     if (!self.slideableHotbar) {
         CGPoint location = [sender locationInView:self.rootView];
         CGFloat screenScale = UIScreen.mainScreen.scale;
@@ -809,7 +840,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
             [self.lightHaptic impactOccurred];
         }
     }
-    
+
     if (isGrabbing) return;
     if (sender.state == UIGestureRecognizerStateBegan ||
         sender.state == UIGestureRecognizerStateChanged ||
@@ -912,7 +943,7 @@ static BOOL isRuntimeMenuControl(ControlButton *button) {
     if(self.shouldTriggerHaptic) {
         [self.lightHaptic impactOccurred];
     }
-    
+
     if (sender.savedBackgroundColor == nil) {
         [self executebtn:sender withAction:ACTION_DOWN];
     }
@@ -992,6 +1023,11 @@ int touchesMovedCount;
         if (touch.type == UITouchTypeIndirectPointer) {
             continue; // handle this in a different place
         }
+        if (self.diagnosticsHUDView && !self.diagnosticsHUDView.hidden) {
+            if (touch.view == self.diagnosticsHUDView || [touch.view isDescendantOfView:self.diagnosticsHUDView]) {
+                continue;
+            }
+        }
         CGPoint locationInView = [touch locationInView:self.rootView];
         CGFloat screenScale = [[UIScreen mainScreen] scale];
         currentHotbarSlot = self.enableHotbarGestures ?
@@ -1020,6 +1056,11 @@ int touchesMovedCount;
             }
             continue; // handle this in a different place
         }
+        if (self.diagnosticsHUDView && !self.diagnosticsHUDView.hidden) {
+            if (touch.view == self.diagnosticsHUDView || [touch.view isDescendantOfView:self.diagnosticsHUDView]) {
+                continue;
+            }
+        }
         if (self.hotbarTouch != touch && [self isTouchInactive:self.primaryTouch]) {
             // Replace the inactive touch with the current active touch
             self.primaryTouch = touch;
@@ -1035,6 +1076,11 @@ int touchesMovedCount;
     for (UITouch *touch in touches) {
         if (touch.type == UITouchTypeIndirectPointer) {
             continue; // handle this in a different place
+        }
+        if (self.diagnosticsHUDView && !self.diagnosticsHUDView.hidden) {
+            if (touch.view == self.diagnosticsHUDView || [touch.view isDescendantOfView:self.diagnosticsHUDView]) {
+                continue;
+            }
         }
         [self sendTouchEvent:touch withUIEvent:event withEvent:ACTION_UP];
     }
@@ -1060,6 +1106,230 @@ int touchesMovedCount;
 
 + (GameSurfaceView *)surface {
     return pojavWindow;
+}
+
+#pragma mark - Diagnostics HUD
+
+- (void)setupDiagnosticsHUDView {
+    if (self.diagnosticsHUDView) return;
+
+    CGFloat hudWidth = 220.0;
+    CGFloat hudHeight = 118.0;
+
+    UIEdgeInsets safeInsets = UIEdgeInsetsZero;
+    if (@available(iOS 11.0, *)) {
+        safeInsets = self.view.safeAreaInsets;
+    }
+    CGFloat startX = safeInsets.left + 16.0;
+    CGFloat startY = safeInsets.top + 16.0;
+
+    UIView *hud = [[UIView alloc] initWithFrame:CGRectMake(startX, startY, hudWidth, hudHeight)];
+    hud.backgroundColor = [UIColor colorWithRed:16/255.0 green:20/255.0 blue:26/255.0 alpha:0.85];
+    hud.layer.cornerRadius = 12.0;
+    hud.layer.borderWidth = 1.0;
+    hud.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.2].CGColor;
+    hud.layer.masksToBounds = YES;
+    hud.userInteractionEnabled = YES;
+    hud.multipleTouchEnabled = YES;
+
+    // Title label
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0, 6.0, hudWidth - 20.0, 14.0)];
+    titleLabel.text = @"DIAGNOSTICS";
+    titleLabel.font = [UIFont systemFontOfSize:10.5 weight:UIFontWeightBold];
+    titleLabel.textColor = [UIColor colorWithRed:0.35 green:0.80 blue:1.0 alpha:1.0];
+    titleLabel.userInteractionEnabled = NO;
+    [hud addSubview:titleLabel];
+
+    // FPS label (tag 101)
+    UILabel *fpsLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0, 22.0, hudWidth - 20.0, 18.0)];
+    fpsLabel.tag = 101;
+    fpsLabel.text = @"FPS: -- (est. swap)";
+    if (@available(iOS 13.0, *)) {
+        fpsLabel.font = [UIFont monospacedDigitSystemFontOfSize:14.0 weight:UIFontWeightBold];
+    } else {
+        fpsLabel.font = [UIFont boldSystemFontOfSize:14.0];
+    }
+    fpsLabel.textColor = [UIColor colorWithRed:0.3 green:1.0 blue:0.45 alpha:1.0];
+    fpsLabel.userInteractionEnabled = NO;
+    [hud addSubview:fpsLabel];
+
+    // Frame time / Max gap label (tag 102)
+    UILabel *frameLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0, 42.0, hudWidth - 20.0, 15.0)];
+    frameLabel.tag = 102;
+    frameLabel.text = @"Frame: -- ms | Max: -- ms";
+    if (@available(iOS 13.0, *)) {
+        frameLabel.font = [UIFont monospacedDigitSystemFontOfSize:11.0 weight:UIFontWeightMedium];
+    } else {
+        frameLabel.font = [UIFont systemFontOfSize:11.0];
+    }
+    frameLabel.textColor = [UIColor colorWithWhite:0.92 alpha:1.0];
+    frameLabel.userInteractionEnabled = NO;
+    [hud addSubview:frameLabel];
+
+    // Drops & Stutters label (tag 103)
+    UILabel *dropsLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0, 58.0, hudWidth - 20.0, 15.0)];
+    dropsLabel.tag = 103;
+    dropsLabel.text = @"Drops >33ms: 0 | Stutters >50ms: 0";
+    if (@available(iOS 13.0, *)) {
+        dropsLabel.font = [UIFont monospacedDigitSystemFontOfSize:11.0 weight:UIFontWeightRegular];
+    } else {
+        dropsLabel.font = [UIFont systemFontOfSize:11.0];
+    }
+    dropsLabel.textColor = [UIColor colorWithWhite:0.85 alpha:1.0];
+    dropsLabel.userInteractionEnabled = NO;
+    [hud addSubview:dropsLabel];
+
+    // Renderer label (tag 104)
+    UILabel *rendLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0, 74.0, hudWidth - 20.0, 15.0)];
+    rendLabel.tag = 104;
+    rendLabel.text = @"Renderer: --";
+    rendLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    rendLabel.textColor = [UIColor colorWithRed:1.0 green:0.85 blue:0.4 alpha:1.0];
+    rendLabel.userInteractionEnabled = NO;
+    [hud addSubview:rendLabel];
+
+    // Note / disclaimer label
+    UILabel *noteLabel = [[UILabel alloc] initWithFrame:CGRectMake(10.0, 93.0, hudWidth - 20.0, 16.0)];
+    noteLabel.text = @"* Est. swap cadence, not GPU render time";
+    noteLabel.font = [UIFont italicSystemFontOfSize:8.5];
+    noteLabel.textColor = [UIColor colorWithWhite:0.75 alpha:0.85];
+    noteLabel.numberOfLines = 1;
+    noteLabel.userInteractionEnabled = NO;
+    [hud addSubview:noteLabel];
+
+    // Pan gesture (1 finger drag)
+    UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleHUDPan:)];
+    pan.maximumNumberOfTouches = 1;
+    pan.delegate = self;
+    [hud addGestureRecognizer:pan];
+
+    // Pinch gesture (2 finger zoom)
+    UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handleHUDPinch:)];
+    pinch.delegate = self;
+    [hud addGestureRecognizer:pinch];
+
+    self.diagnosticsHUDView = hud;
+    [self.rootView addSubview:self.diagnosticsHUDView];
+    [self.rootView bringSubviewToFront:self.diagnosticsHUDView];
+    [self clampHUDPosition];
+}
+
+- (void)actionToggleDiagnosticsHUD {
+    self.isDiagnosticsHUDEnabled = !self.isDiagnosticsHUDEnabled;
+    amethyst_set_hud_active(self.isDiagnosticsHUDEnabled ? 1 : 0);
+
+    if (self.isDiagnosticsHUDEnabled) {
+        if (!self.diagnosticsHUDView) {
+            [self setupDiagnosticsHUDView];
+        }
+        self.diagnosticsHUDView.hidden = NO;
+        [self.rootView bringSubviewToFront:self.diagnosticsHUDView];
+        [self updateDiagnosticsHUD];
+        [self.diagnosticsHUDTimer invalidate];
+        self.diagnosticsHUDTimer = [NSTimer scheduledTimerWithTimeInterval:0.35 target:self selector:@selector(updateDiagnosticsHUD) userInfo:nil repeats:YES];
+        [[NSRunLoop currentRunLoop] addTimer:self.diagnosticsHUDTimer forMode:NSRunLoopCommonModes];
+    } else {
+        if (self.diagnosticsHUDView) {
+            self.diagnosticsHUDView.hidden = YES;
+        }
+        [self.diagnosticsHUDTimer invalidate];
+        self.diagnosticsHUDTimer = nil;
+    }
+}
+
+- (void)updateDiagnosticsHUD {
+    if (!self.isDiagnosticsHUDEnabled || !self.diagnosticsHUDView) return;
+
+    amethyst_metrics_snapshot_t snap;
+    amethyst_get_metrics_snapshot(&snap);
+
+    UILabel *fpsLabel = [self.diagnosticsHUDView viewWithTag:101];
+    UILabel *frameLabel = [self.diagnosticsHUDView viewWithTag:102];
+    UILabel *dropsLabel = [self.diagnosticsHUDView viewWithTag:103];
+    UILabel *rendLabel = [self.diagnosticsHUDView viewWithTag:104];
+
+    if (snap.estimated_fps > 0.0) {
+        fpsLabel.text = [NSString stringWithFormat:@"FPS: %.1f (est. swap)", snap.estimated_fps];
+    } else {
+        fpsLabel.text = @"FPS: -- (est. swap)";
+    }
+
+    if (snap.frame_time_ms > 0.0) {
+        frameLabel.text = [NSString stringWithFormat:@"Frame: %.1f ms | Max: %.1f ms", snap.frame_time_ms, snap.max_gap_ms];
+    } else {
+        frameLabel.text = [NSString stringWithFormat:@"Frame: -- ms | Max: %.1f ms", snap.max_gap_ms];
+    }
+
+    dropsLabel.text = [NSString stringWithFormat:@"Drops >33ms: %u | Stutters >50ms: %u", snap.drops_33ms, snap.stutters_50ms];
+    rendLabel.text = [NSString stringWithFormat:@"Renderer: %s", snap.renderer[0] ? snap.renderer : "Unknown"];
+}
+
+- (void)handleHUDPan:(UIPanGestureRecognizer *)sender {
+    if (!self.diagnosticsHUDView || !self.diagnosticsHUDView.superview) return;
+    if (sender.state == UIGestureRecognizerStateBegan || sender.state == UIGestureRecognizerStateChanged) {
+        CGPoint translation = [sender translationInView:self.diagnosticsHUDView.superview];
+        self.diagnosticsHUDView.center = CGPointMake(self.diagnosticsHUDView.center.x + translation.x,
+                                                     self.diagnosticsHUDView.center.y + translation.y);
+        [sender setTranslation:CGPointZero inView:self.diagnosticsHUDView.superview];
+        [self clampHUDPosition];
+    } else if (sender.state == UIGestureRecognizerStateEnded || sender.state == UIGestureRecognizerStateCancelled) {
+        [self clampHUDPosition];
+    }
+}
+
+- (void)handleHUDPinch:(UIPinchGestureRecognizer *)sender {
+    if (!self.diagnosticsHUDView || !self.diagnosticsHUDView.superview) return;
+    if (sender.state == UIGestureRecognizerStateBegan || sender.state == UIGestureRecognizerStateChanged) {
+        CGFloat currentScale = [[self.diagnosticsHUDView.layer valueForKeyPath:@"transform.scale.x"] floatValue];
+        if (currentScale <= 0.01) currentScale = 1.0;
+        CGFloat targetScale = currentScale * sender.scale;
+        targetScale = MAX(0.7, MIN(1.6, targetScale));
+        CGFloat factor = targetScale / currentScale;
+        self.diagnosticsHUDView.transform = CGAffineTransformScale(self.diagnosticsHUDView.transform, factor, factor);
+        sender.scale = 1.0;
+        [self clampHUDPosition];
+    } else if (sender.state == UIGestureRecognizerStateEnded || sender.state == UIGestureRecognizerStateCancelled) {
+        [self clampHUDPosition];
+    }
+}
+
+- (void)clampHUDPosition {
+    if (!self.diagnosticsHUDView || !self.diagnosticsHUDView.superview) return;
+
+    UIEdgeInsets safeInsets = UIEdgeInsetsZero;
+    if (@available(iOS 11.0, *)) {
+        safeInsets = self.view.safeAreaInsets;
+    }
+    CGFloat margin = 8.0;
+    CGFloat minX = safeInsets.left + margin;
+    CGFloat maxX = self.view.bounds.size.width - safeInsets.right - margin;
+    CGFloat minY = safeInsets.top + margin;
+    CGFloat maxY = self.view.bounds.size.height - safeInsets.bottom - margin;
+
+    CGRect frame = self.diagnosticsHUDView.frame;
+    CGPoint center = self.diagnosticsHUDView.center;
+
+    if (frame.size.width >= (maxX - minX)) {
+        center.x = (minX + maxX) / 2.0;
+    } else {
+        if (frame.origin.x < minX) {
+            center.x += (minX - frame.origin.x);
+        } else if (CGRectGetMaxX(frame) > maxX) {
+            center.x -= (CGRectGetMaxX(frame) - maxX);
+        }
+    }
+
+    if (frame.size.height >= (maxY - minY)) {
+        center.y = (minY + maxY) / 2.0;
+    } else {
+        if (frame.origin.y < minY) {
+            center.y += (minY - frame.origin.y);
+        } else if (CGRectGetMaxY(frame) > maxY) {
+            center.y -= (CGRectGetMaxY(frame) - maxY);
+        }
+    }
+
+    self.diagnosticsHUDView.center = center;
 }
 
 @end

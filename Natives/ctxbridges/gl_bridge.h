@@ -36,3 +36,15 @@ typedef struct {
 
 void set_gl_bridge_tbl();
 void amethyst_refresh_benchmark_state(void);
+
+typedef struct {
+    double estimated_fps;       // Estimated swap cadence FPS
+    double frame_time_ms;       // Last frame time in ms
+    double max_gap_ms;          // Maximum frame gap in ms in current/recent window
+    uint32_t drops_33ms;        // Frame drops (>33.3ms) in current/recent window
+    uint32_t stutters_50ms;     // Stutters (>50ms) in current/recent window
+    char renderer[64];          // Active renderer name
+} amethyst_metrics_snapshot_t;
+
+void amethyst_get_metrics_snapshot(amethyst_metrics_snapshot_t *out_snapshot);
+void amethyst_set_hud_active(int active);
