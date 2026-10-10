@@ -733,6 +733,18 @@ void APIENTRY_GL4ES gl4es_glLinkProgram(GLuint program) {
     CHECK_PROGRAM(void, program)
     noerrorShim();
 
+    int trace_active = 0;
+    double wrap_start = 0.0;
+    int nested_start = 0;
+    if (__builtin_expect(amethyst_shader_trace_count < 400, 1)) {
+        if (__builtin_expect(is_shader_trace_enabled(), 0)) {
+            trace_active = 1;
+            wrap_start = amethyst_get_time_ms();
+            nested_start = amethyst_nested_compiles;
+            amethyst_in_link_program = 1;
+        }
+    }
+
     clear_program(glprogram);
 
     // check if attached shaders are compatible in term of varying...
@@ -786,7 +798,15 @@ void APIENTRY_GL4ES gl4es_glLinkProgram(GLuint program) {
     if(gles_glLinkProgram) {
         LOAD_GLES(glGetError);
         LOAD_GLES2(glGetProgramiv);
+        double backend_start = 0.0;
+        double backend_end = 0.0;
+        if (__builtin_expect(trace_active, 0)) {
+            backend_start = amethyst_get_time_ms();
+        }
         gles_glLinkProgram(glprogram->id);
+        if (__builtin_expect(trace_active, 0)) {
+            backend_end = amethyst_get_time_ms();
+        }
         GLenum err = gles_glGetError();
         // Get Link Status
         gles_glGetProgramiv(glprogram->id, GL_LINK_STATUS, &glprogram->linked);
@@ -799,13 +819,35 @@ void APIENTRY_GL4ES gl4es_glLinkProgram(GLuint program) {
             DBG(printf(" Link failled!\n");)
             glprogram->linked = 0;
             errorShim(err);
+            if (__builtin_expect(trace_active, 0)) {
+                amethyst_in_link_program = 0;
+                double wrap_end = amethyst_get_time_ms();
+                double wrapper_ms = wrap_end - wrap_start;
+                double backend_ms = (backend_end > backend_start) ? (backend_end - backend_start) : 0.0;
+                int nested_count = amethyst_nested_compiles - nested_start;
+                amethyst_shader_trace_count++;
+                printf("[Amethyst ShaderTrace #%d] event=link program=%u status=failed wrapper_ms=%.2f backend_ms=%.2f nested_compiles=%d\n",
+                       amethyst_shader_trace_count, (unsigned int)glprogram->id, wrapper_ms, backend_ms, nested_count);
+                fflush(stdout);
+            }
             return;
         }
-        
+
     } else {
         noerrorShim();
     }
     glprogram->linked = 1;
+    if (__builtin_expect(trace_active, 0)) {
+        amethyst_in_link_program = 0;
+        double wrap_end = amethyst_get_time_ms();
+        double wrapper_ms = wrap_end - wrap_start;
+        double backend_ms = (backend_end > backend_start) ? (backend_end - backend_start) : 0.0;
+        int nested_count = amethyst_nested_compiles - nested_start;
+        amethyst_shader_trace_count++;
+        printf("[Amethyst ShaderTrace #%d] event=link program=%u status=ok wrapper_ms=%.2f backend_ms=%.2f nested_compiles=%d\n",
+               amethyst_shader_trace_count, (unsigned int)glprogram->id, wrapper_ms, backend_ms, nested_count);
+        fflush(stdout);
+    }
 }
 
 void APIENTRY_GL4ES gl4es_glUseProgram(GLuint program) {

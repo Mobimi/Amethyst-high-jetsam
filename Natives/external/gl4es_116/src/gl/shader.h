@@ -73,5 +73,13 @@ shader_t *getShader(GLuint shader);
 // ========== GL_ARB_shader_objects ==============
 
 GLhandleARB APIENTRY_GL4ES gl4es_glCreateShaderObject(GLenum shaderType);
-    
+
+// Amethyst GL4ES Shader Trace
+extern int amethyst_shader_trace_count;
+extern int amethyst_in_link_program;
+extern int amethyst_nested_compiles;
+
+int is_shader_trace_enabled(void);
+double amethyst_get_time_ms(void);
+
 #endif // _GL4ES_SHADER_H_

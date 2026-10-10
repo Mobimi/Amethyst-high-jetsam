@@ -7,6 +7,30 @@
 #include "glstate.h"
 #include "loader.h"
 #include "shaderconv.h"
+#include "envvars.h"
+#include <time.h>
+#include <sys/time.h>
+
+int amethyst_shader_trace_count = 0;
+int amethyst_in_link_program = 0;
+int amethyst_nested_compiles = 0;
+
+int is_shader_trace_enabled(void) {
+    const char *env = GetEnvVar("AMETHYST_GL4ES_SHADER_TRACE");
+    return (env && strcmp(env, "1") == 0);
+}
+
+double amethyst_get_time_ms(void) {
+#if defined(CLOCK_MONOTONIC)
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1000000.0;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0;
+#endif
+}
 
 //#define DEBUG
 #ifdef DEBUG
@@ -117,13 +141,34 @@ void APIENTRY_GL4ES gl4es_glDeleteShader(GLuint shader) {
 
 void APIENTRY_GL4ES gl4es_glCompileShader(GLuint shader) {
     DBG(printf("glCompileShader(%d)\n", shader);)
+    int trace_active = 0;
+    double wrap_start = 0.0;
+    if (__builtin_expect(amethyst_shader_trace_count < 400, 1)) {
+        if (__builtin_expect(is_shader_trace_enabled(), 0)) {
+            trace_active = 1;
+            wrap_start = amethyst_get_time_ms();
+        }
+    }
+
     // look for the shader
     CHECK_SHADER(void, shader)
 
+    if (__builtin_expect(trace_active && amethyst_in_link_program, 0)) {
+        amethyst_nested_compiles++;
+    }
+
     glshader->compiled = 1;
     LOAD_GLES2(glCompileShader);
+    double backend_start = 0.0;
+    double backend_end = 0.0;
     if(gles_glCompileShader) {
+        if (__builtin_expect(trace_active, 0)) {
+            backend_start = amethyst_get_time_ms();
+        }
         gles_glCompileShader(glshader->id);
+        if (__builtin_expect(trace_active, 0)) {
+            backend_end = amethyst_get_time_ms();
+        }
         errorGL();
         if(globals4es.logshader) {
             // get compile status and print shaders sources if compile fail...
@@ -142,6 +187,25 @@ void APIENTRY_GL4ES gl4es_glCompileShader(GLuint shader) {
         }
     } else
         noerrorShim();
+
+    if (__builtin_expect(trace_active, 0)) {
+        LOAD_GLES2(glGetShaderiv);
+        GLint comp_status = 0;
+        if (gles_glGetShaderiv) {
+            gles_glGetShaderiv(glshader->id, GL_COMPILE_STATUS, &comp_status);
+        }
+        double wrap_end = amethyst_get_time_ms();
+        double wrapper_ms = wrap_end - wrap_start;
+        double backend_ms = (backend_end > backend_start) ? (backend_end - backend_start) : 0.0;
+        const char *stage_str = (glshader->type == GL_VERTEX_SHADER) ? "vertex" :
+                                (glshader->type == GL_FRAGMENT_SHADER) ? "fragment" : "unknown";
+        const char *status_str = (comp_status == GL_TRUE) ? "ok" : "failed";
+        const char *nested_str = amethyst_in_link_program ? " nested=1" : "";
+        amethyst_shader_trace_count++;
+        printf("[Amethyst ShaderTrace #%d] event=compile shader=%u stage=%s status=%s wrapper_ms=%.2f backend_ms=%.2f%s\n",
+               amethyst_shader_trace_count, (unsigned int)glshader->id, stage_str, status_str, wrapper_ms, backend_ms, nested_str);
+        fflush(stdout);
+    }
 }
 
 void APIENTRY_GL4ES gl4es_glShaderSource(GLuint shader, GLsizei count, const GLchar * const *string, const GLint *length) {

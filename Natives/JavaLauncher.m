@@ -68,6 +68,7 @@ void init_applyExperimentalSettings() {
     unsetenv("LIBGL_SHRINK");
     unsetenv("LIBGL_NOVAOCACHE");
     unsetenv("AMETHYST_GL4ES_TEXTURE_TRACE");
+    unsetenv("AMETHYST_GL4ES_SHADER_TRACE");
 
     // 2. Apply Benchmark & FPS log (cadence metrics)
     if (getPrefBool(@"experimental.benchmark")) {
@@ -84,12 +85,13 @@ void init_applyExperimentalSettings() {
     BOOL isGL4ES = (!renderer || [renderer isEqualToString:@"auto"] || [renderer containsString:@"gl4es"]);
 
     if (isGL4ES) {
-        // 3. Shader Error Diagnostics + Bounded Texture Trace
+        // 3. Shader Error Diagnostics + Bounded Texture & Shader Trace
         if (getPrefBool(@"experimental.shader_error_log")) {
             setenv("LIBGL_LOGSHADERERROR", "1", 1);
             setenv("LIBGL_SILENTSTUB", "0", 1);
             setenv("AMETHYST_GL4ES_TEXTURE_TRACE", "1", 1);
-            NSLog(@"[Amethyst Experimental] Enabled Shader Error & Stub Diagnostics + GL4ES Texture Trace");
+            setenv("AMETHYST_GL4ES_SHADER_TRACE", "1", 1);
+            NSLog(@"[Amethyst Experimental] Enabled Shader Error & Stub Diagnostics + GL4ES Texture & Shader Trace");
         }
 
         // 4. Draw Call Batching
