@@ -209,7 +209,8 @@ void APIENTRY_GL4ES gl4es_glBindTexture(GLenum target, GLuint texture) {
             case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
             case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
             case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-                gles_glBindTexture(target, tex?tex->glname:0);
+                realize_active();
+                gles_glBindTexture(GL_TEXTURE_CUBE_MAP, tex?tex->glname:0);
                 break;
             case GL_TEXTURE_1D:
             case GL_TEXTURE_2D:
