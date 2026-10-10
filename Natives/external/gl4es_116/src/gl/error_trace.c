@@ -1,10 +1,12 @@
 #include "error_trace.h"
 #include "debug.h"
+#include "envvars.h"
 #include "gl4es.h"
 #include "glstate.h"
 #include "init.h"
 #include "loader.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define AMETHYST_MAX_ERROR_SITES 128
