@@ -692,6 +692,19 @@ void initialize_gl4es() {
               strcpy(cwd, custom_psa);
             else
               strcpy(cwd, "PROGDIR:");
+#elif defined(__APPLE__)
+            const char* home = GetEnvVar("AME_HOME");
+            if(custom_psa)
+              strcpy(cwd, custom_psa);
+            else if(home)
+              strcpy(cwd, home);
+            else {
+              const char* h = GetEnvVar("HOME");
+              if(h) strcpy(cwd, h);
+            }
+            if(strlen(cwd))
+              if(cwd[strlen(cwd)-1]!='/')
+                  strcat(cwd, "/");
 #endif
             if(strlen(cwd)) {
                 strcat(cwd, ".gl4es.psa");
