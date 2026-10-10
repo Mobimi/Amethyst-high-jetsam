@@ -795,11 +795,11 @@ void APIENTRY_GL4ES gl4es_glLinkProgram(GLuint program) {
         }
     // ok, continue with linking
     LOAD_GLES2(glLinkProgram);
+    double backend_start = 0.0;
+    double backend_end = 0.0;
     if(gles_glLinkProgram) {
         LOAD_GLES(glGetError);
         LOAD_GLES2(glGetProgramiv);
-        double backend_start = 0.0;
-        double backend_end = 0.0;
         if (__builtin_expect(trace_active, 0)) {
             backend_start = amethyst_get_time_ms();
         }
