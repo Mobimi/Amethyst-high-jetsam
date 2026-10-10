@@ -1045,7 +1045,7 @@ void APIENTRY_GL4ES fpe_glAlphaFunc(GLenum func, GLclampf ref) {
 int fpe_gettexture(int TMU) {
     int state=glstate->enable.texture[TMU];
     int target = -1;
-    #define GO(A) if(IS_##A(state) && glstate->texture.bound[TMU][ENABLED_##A]->valid) target = ENABLED_##A
+    #define GO(A) if(IS_##A(state) && (glstate->texture.bound[TMU][ENABLED_##A]->valid || (glstate->texture.bound[TMU][ENABLED_##A]->glname > 0 && glstate->texture.bound[TMU][ENABLED_##A]->width > 0))) target = ENABLED_##A
     GO(CUBE_MAP);
     else GO(TEX3D);
     else GO(TEXTURE_RECTANGLE);
@@ -1074,7 +1074,7 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
             glstate->fpe_state->texture[i].textype = 0;
             int texunit = fpe_gettexture(i);
             gltexture_t* tex = (texunit==-1)?NULL:glstate->texture.bound[i][texunit];
-            if(tex && tex->valid) {
+            if(tex && (tex->valid || (tex->glname > 0 && tex->width > 0))) {
                 int fmt;
                 if(texunit==ENABLED_CUBE_MAP) fmt = FPE_TEX_CUBE;
                 else {

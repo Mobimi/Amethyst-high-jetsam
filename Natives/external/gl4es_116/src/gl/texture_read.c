@@ -85,6 +85,18 @@ void APIENTRY_GL4ES gl4es_glCopyTexImage2D(GLenum target,  GLint level,  GLenum 
         }
         LOAD_GLES(glCopyTexImage2D);
         gles_glCopyTexImage2D(target, level, fmt, x, y, width, height, border);
+        bound->valid = 1;
+        bound->width = width;
+        bound->height = height;
+        bound->nwidth = (hardext.npot>0 || hardext.esversion>1)?width:npot(width);
+        bound->nheight = (hardext.npot>0 || hardext.esversion>1)?height:npot(height);
+        bound->adjust = (width!=bound->nwidth || height!=bound->nheight);
+        bound->adjustxy[0] = (float)width / bound->nwidth;
+        bound->adjustxy[1] = (float)height / bound->nheight;
+        bound->format = fmt;
+        bound->fpe_format = (fmt==GL_RGBA)?FPE_TEX_RGBA:(fmt==GL_RGB?FPE_TEX_RGB:FPE_TEX_LUM);
+        if (glstate->fpe_state && glstate->fpe_bound_changed < glstate->texture.active+1)
+            glstate->fpe_bound_changed = glstate->texture.active+1;
     } else {
         void* tmp = malloc(width*height*4);
         gl4es_glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, tmp);

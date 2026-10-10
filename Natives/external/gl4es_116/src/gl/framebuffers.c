@@ -562,6 +562,9 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
         DBG(printf("Attach Texture %d to FBO %d as Attachement %s\n", tex->glname, fb->id, PrintEnum(attachment));)
         tex->binded_fbo = fb->id;
         tex->binded_attachment = attachment;
+        tex->valid = 1;
+        if (glstate->fpe_state)
+            glstate->fpe_bound_changed = hardext.maxtex;
     }
 
     if ((old_attachment_type == textarget) && (old_attachment == (tex?tex->texture:texture)))
