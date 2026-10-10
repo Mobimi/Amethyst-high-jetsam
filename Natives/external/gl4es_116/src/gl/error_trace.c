@@ -1,5 +1,6 @@
 #include "error_trace.h"
 #include "debug.h"
+#include "envvars.h"
 #include "gl4es.h"
 #include "glstate.h"
 #include "init.h"
