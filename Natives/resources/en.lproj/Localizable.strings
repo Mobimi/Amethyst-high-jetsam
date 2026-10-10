@@ -357,6 +357,10 @@
 "preference.title.shader_error_log" = "Shader Error Diagnostics";
 "preference.detail.shader_error_log" = "Enables LIBGL_LOGSHADERERROR=1, LIBGL_SILENTSTUB=0, and bounded texture diagnostics (AMETHYST_GL4ES_TEXTURE_TRACE=1) in GL4ES. May increase log size and CPU overhead. Requires relaunching Amethyst app if game was already run.";
 
+// Log Text Size
+"preference.title.log_text_size" = "Log Text Size";
+"preference.detail.log_text_size" = "Adjusts font size and row height of the in-app log console (levels 1-9). Level 5 is the default size. Changes apply immediately.";
+
 // 4. Draw Call Batching
 "preference.title.draw_batching" = "Draw Call Batching";
 "preference.detail.draw_batching" = "Controls LIBGL_BATCH. Attempts to merge subsequent glDraw calls up to the specified vertex limit. May improve draw throughput or cause visual anomalies depending on mod rendering. Requires relaunching Amethyst app if game was already run.";

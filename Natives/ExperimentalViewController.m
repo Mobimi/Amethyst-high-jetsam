@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import "ExperimentalViewController.h"
 #import "LauncherPreferences.h"
+#import "PLLogOutputView.h"
 #import "utils.h"
 
 @interface ExperimentalViewController ()
@@ -21,7 +22,13 @@
 - (void)viewDidLoad {
     self.getPreference = ^id(NSString *section, NSString *key) {
         NSString *fullKey = [NSString stringWithFormat:@"experimental.%@", key];
-        return getPrefObject(fullKey);
+        id val = getPrefObject(fullKey);
+        if ([key isEqualToString:@"log_text_size"]) {
+            int intVal = val ? [val intValue] : 5;
+            if (intVal < 1 || intVal > 9) return @(5);
+            return @(intVal);
+        }
+        return val;
     };
 
     self.setPreference = ^(NSString *section, NSString *key, id value) {
@@ -39,6 +46,8 @@
         setPrefBool(@"experimental.benchmark", NO);
         setPrefBool(@"experimental.fps_log", NO);
         setPrefBool(@"experimental.shader_error_log", NO);
+        setPrefInt(@"experimental.log_text_size", 5);
+        [PLLogOutputView updateLogTextSize:5];
         setPrefObject(@"experimental.draw_batching", @"default");
         setPrefObject(@"experimental.use_vbo", @"default");
         setPrefObject(@"experimental.mipmap_mode", @"default");
@@ -71,6 +80,17 @@
                 @"hasDetail": @YES,
                 @"icon": @"exclamationmark.bubble",
                 @"type": self.typeSwitch
+            },
+            @{
+                @"key": @"log_text_size",
+                @"hasDetail": @YES,
+                @"icon": @"textformat.size",
+                @"type": self.typeSlider,
+                @"min": @(1),
+                @"max": @(9),
+                @"action": ^(int val) {
+                    [PLLogOutputView updateLogTextSize:val];
+                }
             }
         ],
         @[

@@ -309,6 +309,10 @@
 "preference.title.shader_error_log" = "Chẩn đoán lỗi Shader";
 "preference.detail.shader_error_log" = "Kích hoạt LIBGL_LOGSHADERERROR=1, LIBGL_SILENTSTUB=0 và chẩn đoán texture có giới hạn (AMETHYST_GL4ES_TEXTURE_TRACE=1) trong GL4ES. Tăng lượng log và tiêu tốn CPU. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
 
+// Kích cỡ chữ nhật ký
+"preference.title.log_text_size" = "Kích cỡ chữ nhật ký";
+"preference.detail.log_text_size" = "Điều chỉnh cỡ chữ và chiều cao dòng của bảng nhật ký (mức 1-9). Mức 5 là kích cỡ mặc định ban đầu. Áp dụng ngay khi kéo.";
+
 // 4. Draw Call Batching
 "preference.title.draw_batching" = "Gộp lệnh vẽ (Batching)";
 "preference.detail.draw_batching" = "Điều khiển LIBGL_BATCH. Gộp các lệnh vẽ glDraw liên tiếp theo ngưỡng đỉnh (vertices). Có thể tăng hiệu năng vẽ hoặc gây lỗi hình ảnh tùy thuộc vào mod. Yêu cầu thoát hẳn và mở lại Amethyst nếu đã từng vào game.";
