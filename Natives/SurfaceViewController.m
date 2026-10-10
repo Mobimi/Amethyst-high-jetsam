@@ -23,7 +23,7 @@
 
 #include "glfw_keycodes.h"
 #include "utils.h"
-#include "gl_bridge.h"
+#import "ctxbridges/gl_bridge.h"
 
 #include <dlfcn.h>
 
