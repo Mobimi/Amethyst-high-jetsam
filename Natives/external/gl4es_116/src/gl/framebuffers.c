@@ -229,6 +229,16 @@ void APIENTRY_GL4ES gl4es_glBindFramebuffer(GLenum target, GLuint framebuffer) {
         errorShim(GL_INVALID_VALUE);
         return;
     }
+
+    // Redundant bind: this non-default FBO is already current for both draw and read, so GLES already has it
+    // bound (current_fb mirrors the GLES binding). Skip the backend bind and its glGetError round-trip.
+    // The default framebuffer (id 0) is excluded on purpose: it maps to mainfbo_fbo, which can change.
+    if (target == GL_FRAMEBUFFER && framebuffer != 0
+        && glstate->fbo.current_fb == fb && glstate->fbo.fbo_draw == fb && glstate->fbo.fbo_read == fb) {
+        glstate->fbo.internal = 0;
+        noerrorShim();
+        return;
+    }
         
     if (target == GL_FRAMEBUFFER) {
         glstate->fbo.fbo_read = fb;

@@ -1160,12 +1160,31 @@ void APIENTRY_GL4ES gl4es_glClampColor(GLenum target, GLenum clamp)
 }
 AliasExport(void,glClampColor,,(GLenum target, GLenum clamp));
 
+// Capacity to allocate when a scratch buffer must grow from "cur" to hold at least "need" bytes.
+// Growing by the exact request made free()/malloc() (or glBufferData orphaning) repeat every time a slightly
+// larger draw showed up. Grow by >=25% and round up to 64KB: waste is bounded (<=25% + 64KB over the largest
+// request ever seen), buffers never shrink (high-water mark) and the growth steps stop quickly.
+static int scratch_capacity(int cur, int need) {
+    long long cap = need;
+    long long grown = (long long)cur + ((long long)cur >> 2);
+    if(cap < grown) cap = grown;
+    cap = (cap + 0xFFFF) & ~0xFFFFLL;
+    if(cap > 0x7FFFFFFFLL) cap = need;  // never overflow int, fall back to the exact request
+    return (int)cap;
+}
+
 void gl4es_scratch(int alloc) {
     if(glstate->scratch_alloc<alloc) {
+        int cap = scratch_capacity(glstate->scratch_alloc, alloc);
+        void *n = malloc(cap);
+        if(!n && cap!=alloc) {  // memory pressure: retry with the exact size
+            cap = alloc;
+            n = malloc(cap);
+        }
         if(glstate->scratch)
             free(glstate->scratch);
-        glstate->scratch = malloc(alloc);
-        glstate->scratch_alloc = alloc;
+        glstate->scratch = n;
+        glstate->scratch_alloc = n?cap:0;
     }
 }
 
@@ -1182,9 +1201,10 @@ void gl4es_scratch_vertex(int alloc) {
         gles_glGenBuffers(1, &glstate->scratch_vertex);
         deleteSingleBuffer(old_buffer);
 #endif
+        int cap = scratch_capacity(glstate->scratch_vertex_size, alloc);
         bindBuffer(GL_ARRAY_BUFFER, glstate->scratch_vertex);
-        gles_glBufferData(GL_ARRAY_BUFFER, alloc, NULL, GL_STREAM_DRAW);
-        glstate->scratch_vertex_size = alloc;
+        gles_glBufferData(GL_ARRAY_BUFFER, cap, NULL, GL_STREAM_DRAW);
+        glstate->scratch_vertex_size = cap;
     } else
         bindBuffer(GL_ARRAY_BUFFER, glstate->scratch_vertex);
 }
@@ -1201,8 +1221,9 @@ void gl4es_scratch_indices(int alloc) {
     }
     bindBuffer(GL_ELEMENT_ARRAY_BUFFER, glstate->scratch_indices);
     if(glstate->scratch_indices_size < alloc) {
-        gles_glBufferData(GL_ELEMENT_ARRAY_BUFFER, alloc, NULL, GL_DYNAMIC_DRAW);
-        glstate->scratch_indices_size = alloc;
+        int cap = scratch_capacity(glstate->scratch_indices_size, alloc);
+        gles_glBufferData(GL_ELEMENT_ARRAY_BUFFER, cap, NULL, GL_DYNAMIC_DRAW);
+        glstate->scratch_indices_size = cap;
     }
 }
 

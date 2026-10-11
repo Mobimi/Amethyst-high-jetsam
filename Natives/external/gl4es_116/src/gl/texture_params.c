@@ -293,6 +293,12 @@ GLenum get_texture_wrap_t(gltexture_t* texture, glsampler_t *sampler)
 {
     return get_texture_wrap(sampler->wrap_t, texture);
 }
+#ifndef GL_TEXTURE_PRIORITY
+#define GL_TEXTURE_PRIORITY 0x8066
+#endif
+#ifndef GL_DEPTH_TEXTURE_MODE
+#define GL_DEPTH_TEXTURE_MODE 0x884B
+#endif
 // TODO: also glTexParameterf(v)?
 void APIENTRY_GL4ES gl4es_glTexParameterfv(GLenum target, GLenum pname, const GLfloat *params) {
     DBG(printf("glTexParameterfv(%s, %s, [%f(%s)...])\n", PrintEnum(target), PrintEnum(pname), params[0], PrintEnum(params[0]));)
@@ -316,6 +322,12 @@ void APIENTRY_GL4ES gl4es_glTexParameterfv(GLenum target, GLenum pname, const GL
                 return;			// not on GLES
             case GL_TEXTURE_LOD_BIAS:
                 return;			// not on GLES
+            // Desktop-GL-only parameters without a GLES equivalent. Desktop GL accepts them, but forwarding
+            // them makes the GLES backend raise GL_INVALID_ENUM, which the app then reads back as a spurious
+            // error ("GL ERROR @ Post render"). Accept them silently, like LOD_BIAS above.
+            case GL_TEXTURE_PRIORITY:
+            case GL_DEPTH_TEXTURE_MODE:
+                return;
             case GL_GENERATE_MIPMAP:
                 if(globals4es.automipmap==3)
                     return; // no mipmap, so no need to generate any

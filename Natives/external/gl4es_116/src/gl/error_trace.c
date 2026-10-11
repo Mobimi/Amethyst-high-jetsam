@@ -31,8 +31,11 @@ typedef struct {
     int line;
 } amethyst_backend_op_t;
 
-static int s_error_trace_enabled = -1;
-static int s_backend_probe_enabled = -1;
+// State is exported (see error_trace.h) so that disabled diagnostics cost a single
+// inlined, well-predicted branch on hot paths instead of a cross-TU call.
+// -1 = not resolved yet, 0 = off (default), 1 = on.
+int amethyst_trace_state = -1;
+int amethyst_probe_state = -1;
 
 static uint32_t s_total_shim_errors = 0;
 static uint32_t s_count_invalid_enum = 0;
@@ -47,30 +50,30 @@ static amethyst_error_site_t s_sites[AMETHYST_MAX_ERROR_SITES];
 static uint32_t s_backend_op_head = 0;
 static amethyst_backend_op_t s_backend_ring[AMETHYST_BACKEND_RING_SIZE];
 
-int amethyst_is_error_trace_enabled(void) {
-    if (__builtin_expect(s_error_trace_enabled == -1, 0)) {
+int amethyst_iamethyst_trace_state(void) {
+    if (__builtin_expect(amethyst_trace_state == -1, 0)) {
         const char *env = GetEnvVar("AMETHYST_GL4ES_ERROR_TRACE");
-        s_error_trace_enabled = (env && strcmp(env, "1") == 0) ? 1 : 0;
-        if (s_error_trace_enabled) {
+        amethyst_trace_state = (env && strcmp(env, "1") == 0) ? 1 : 0;
+        if (amethyst_trace_state) {
             printf("[Amethyst ErrorTrace] Diagnostics activated (AMETHYST_GL4ES_ERROR_TRACE=1)\n");
         }
     }
-    return s_error_trace_enabled;
+    return amethyst_trace_state;
 }
 
-int amethyst_is_backend_probe_enabled(void) {
-    if (__builtin_expect(s_backend_probe_enabled == -1, 0)) {
+int amethyst_iamethyst_probe_state(void) {
+    if (__builtin_expect(amethyst_probe_state == -1, 0)) {
         const char *env = GetEnvVar("AMETHYST_GL4ES_BACKEND_PROBE");
-        s_backend_probe_enabled = (env && strcmp(env, "1") == 0) ? 1 : 0;
-        if (s_backend_probe_enabled) {
+        amethyst_probe_state = (env && strcmp(env, "1") == 0) ? 1 : 0;
+        if (amethyst_probe_state) {
             printf("[Amethyst BackendProbe] Active backend probe activated (AMETHYST_GL4ES_BACKEND_PROBE=1)\n");
         }
     }
-    return s_backend_probe_enabled;
+    return amethyst_probe_state;
 }
 
-void amethyst_trace_error_shim(GLenum error, const char *file, int line, const char *func) {
-    if (!amethyst_is_error_trace_enabled()) return;
+void amethyst_trace_error_shim_slow(GLenum error, const char *file, int line, const char *func) {
+    if (!amethyst_iamethyst_trace_state()) return;
     if (error == GL_NO_ERROR) return;
 
     s_total_shim_errors++;
@@ -125,8 +128,8 @@ void amethyst_trace_error_shim(GLenum error, const char *file, int line, const c
     }
 }
 
-void amethyst_trace_backend_record(const char *api_name, GLenum target, GLenum param1, GLint param2, const char *file, int line) {
-    if (!amethyst_is_error_trace_enabled()) return;
+void amethyst_trace_backend_record_slow(const char *api_name, GLenum target, GLenum param1, GLint param2, const char *file, int line) {
+    if (!amethyst_iamethyst_trace_state()) return;
     uint32_t idx = s_backend_op_head % AMETHYST_BACKEND_RING_SIZE;
     s_backend_ring[idx].api_name = api_name;
     s_backend_ring[idx].target = target;
@@ -160,8 +163,8 @@ void amethyst_trace_report_gl_error(GLenum error, int from_backend) {
     }
 }
 
-void amethyst_probe_backend_call(const char *api_name, const char *file, int line) {
-    if (!amethyst_is_backend_probe_enabled()) return;
+void amethyst_probe_backend_call_slow(const char *api_name, const char *file, int line) {
+    if (!amethyst_iamethyst_probe_state()) return;
     LOAD_GLES(glGetError);
     if (!gles_glGetError) return;
     GLenum err = gles_glGetError();
@@ -180,8 +183,8 @@ void amethyst_probe_backend_call(const char *api_name, const char *file, int lin
     }
 }
 
-void amethyst_validate_backend_enum(const char *api_name, GLenum value, const char *file, int line) {
-    if (!amethyst_is_error_trace_enabled()) return;
+void amethyst_validate_backend_enum_slow(const char *api_name, GLenum value, const char *file, int line) {
+    if (!amethyst_iamethyst_trace_state()) return;
     // Highlight desktop GL enums that are invalid in OpenGL ES
     switch (value) {
         case 0x8515: // GL_TEXTURE_CUBE_MAP_POSITIVE_X as glBindTexture target

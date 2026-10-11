@@ -11,4 +11,7 @@ const char* const* fpe_FragmentShader(shaderconv_need_t* need, fpe_state_t *stat
 const char* const* fpe_CustomVertexShader(const char* initial, fpe_state_t* state, int default_fragment);
 const char* const* fpe_CustomFragmentShader(const char* initial, fpe_state_t* state);
 
+// identifies the build of the FPE shader generator (used to invalidate the PSA)
+const char* fpe_shader_build_stamp(void);
+
 #endif // _GL4ES_FPE_SHADER_H_

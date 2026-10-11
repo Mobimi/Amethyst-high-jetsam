@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "../glx/hardext.h"
@@ -8,6 +9,9 @@
 #include "program.h"
 #include "fpe_cache.h"
 #include "fpe.h"
+#include "fpe_shader.h"
+#include "shaderconv.h"
+#include "loader.h"
 
 //#define DEBUG
 #ifdef DEBUG
@@ -18,7 +22,7 @@
 #endif
 
 static const char PSA_SIGN[] = "GL4ES PrecompiledShaderArchive";
-#define CACHE_VERSION 112
+#define CACHE_VERSION 113   // 113: header carries a backend/build identity hash
 
 static kh_inline khint_t _hash_fpe(fpe_state_t *p)
 {
@@ -100,6 +104,46 @@ typedef struct gl4es_psa_s {
 static gl4es_psa_t *psa = NULL;
 static char *psa_name = NULL;
 
+// Sanity limits for archive contents (a corrupt/foreign file must never trigger huge allocations)
+#define PSA_MAX_ENTRIES     65536
+#define PSA_MAX_PROG_SIZE   (8*1024*1024)
+
+// Identity of the driver + generator the archive was produced with. Program binaries are only valid for the
+// exact GLES implementation (on iOS: the ANGLE/Metal build and device) and for the exact shader generator that
+// produced the source, so an archive written by a different one must be ignored, never loaded.
+static uint64_t psa_fnv(uint64_t h, const char* s)
+{
+    if(!s) s = "";
+    while(*s)
+        h = (h ^ (unsigned char)*s++) * 1099511628211ULL;
+    return (h ^ 0xFF) * 1099511628211ULL;
+}
+
+static uint64_t psa_identity(void)
+{
+    LOAD_GLES(glGetString);
+    if(!gles_glGetString)
+        return 0;
+    const char *vendor = (const char*)gles_glGetString(GL_VENDOR);
+    const char *renderer = (const char*)gles_glGetString(GL_RENDERER);
+    const char *version = (const char*)gles_glGetString(GL_VERSION);
+    if(!vendor && !renderer && !version)
+        return 0;   // cannot identify the backend: do not use the archive at all
+    char tmp[64];
+    snprintf(tmp, sizeof(tmp), "es%d/bin%d/%zu", hardext.esversion, hardext.prgbin_n, sizeof(fpe_state_t));
+    uint64_t h = 1469598103934665603ULL;
+    h = psa_fnv(h, vendor);
+    h = psa_fnv(h, renderer);
+    h = psa_fnv(h, version);
+    h = psa_fnv(h, tmp);
+    h = psa_fnv(h, fpe_shader_build_stamp());
+    h = psa_fnv(h, shaderconv_build_stamp());
+    h = psa_fnv(h, __DATE__ " " __TIME__);
+    return h?h:1;
+}
+
+static uint64_t psa_id = 0;
+
 void fpe_readPSA()
 {
     if(!psa || !psa_name)
@@ -112,7 +156,7 @@ void fpe_readPSA()
         fclose(f);
         return; //to short
     }
-    if(strcmp(tmp, PSA_SIGN)!=0) {
+    if(memcmp(tmp, PSA_SIGN, sizeof(PSA_SIGN))!=0) {
         fclose(f);
         return; // bad signature
     }
@@ -134,41 +178,45 @@ void fpe_readPSA()
         fclose(f);
         return; // maybe try to adapt instead?
     }
+    uint64_t id = 0;
+    if(fread(&id, sizeof(id), 1, f)!=1 || id!=psa_id) {
+        fclose(f);
+        SHUT_LOGD("Ignoring PSA: written by a different GLES backend / GL4ES build\n");
+        return; // binaries are not portable between drivers/builds
+    }
     int n = 0;
-    if(fread(&n, sizeof(n), 1, f)!=1) {
+    if(fread(&n, sizeof(n), 1, f)!=1 || n<0 || n>PSA_MAX_ENTRIES) {
         fclose(f);
         return;
     }
     for (int i=0; i<n; ++i) {
         psa_t *p = (psa_t*)calloc(1, sizeof(psa_t));
-        if(fread(&p->state, sizeof(p->state), 1, f)!=1) {
+        if(!p)
+            break;
+        if(fread(&p->state, sizeof(p->state), 1, f)!=1
+        || fread(&p->format, sizeof(p->format), 1, f)!=1
+        || fread(&p->size, sizeof(p->size), 1, f)!=1
+        || p->size<=0 || p->size>PSA_MAX_PROG_SIZE) {
             free(p);
-            fclose(f);
-            return;
-        }
-        if(fread(&p->format, sizeof(p->format), 1, f)!=1) {
-            free(p);
-            fclose(f);
-            return;
-        }
-        if(fread(&p->size, sizeof(p->size), 1, f)!=1) {
-            free(p);
-            fclose(f);
-            return;
+            break;  // truncated or corrupt: keep what was loaded so far
         }
         p->prog = malloc(p->size);
-        if(fread(p->prog, p->size, 1, f)!=1) {
+        if(!p->prog || fread(p->prog, p->size, 1, f)!=1) {
             free(p->prog);
             free(p);
-            fclose(f);
-            return;
+            break;
         }
         int ret;
         khint_t k = kh_put(psalist, psa->cache, &p->state, &ret);
+        if(!ret) {  // duplicate state in the file: keep the first one, don't leak
+            free(p->prog);
+            free(p);
+            continue;
+        }
         kh_value(psa->cache, k) = p;
-        psa->size = kh_size(psa->cache);
     }
     fclose(f);
+    psa->size = kh_size(psa->cache);
     SHUT_LOGD("Loaded a PSA with %d Precompiled Programs\n", psa->size);
 }
 
@@ -178,54 +226,53 @@ void fpe_writePSA()
         return;
     if(!psa->dirty)
         return; // no need
-    FILE *f = fopen(psa_name, "wb");
-    if(!f)
+    // Write to a temporary file then rename: if the app is killed mid-write (common on iOS) the previous
+    // archive stays intact instead of being left truncated.
+    size_t nlen = strlen(psa_name);
+    char *tmpname = (char*)malloc(nlen + 5);
+    if(!tmpname)
         return;
-    if(fwrite(PSA_SIGN, sizeof(PSA_SIGN), 1, f)!=1) {
-        fclose(f);
-        return; //to short
+    memcpy(tmpname, psa_name, nlen);
+    memcpy(tmpname+nlen, ".tmp", 5);
+    FILE *f = fopen(tmpname, "wb");
+    if(!f) {
+        free(tmpname);
+        return;
     }
+    int ok = 1;
     int version = CACHE_VERSION;
-    if(fwrite(&version, sizeof(version), 1, f)!=1) {
-        fclose(f);
-        return;
-    }
     int sz_fpe = sizeof(fpe_state_t);
-    if(fwrite(&sz_fpe, sizeof(sz_fpe), 1, f)!=1) {
-        fclose(f);
-        return;
-    }
-    if(fwrite(&psa->size, sizeof(psa->size), 1, f)!=1) {
-        fclose(f);
-        return;
-    }
+    int count = (int)kh_size(psa->cache);
+    ok = ok && fwrite(PSA_SIGN, sizeof(PSA_SIGN), 1, f)==1;
+    ok = ok && fwrite(&version, sizeof(version), 1, f)==1;
+    ok = ok && fwrite(&sz_fpe, sizeof(sz_fpe), 1, f)==1;
+    ok = ok && fwrite(&psa_id, sizeof(psa_id), 1, f)==1;
+    ok = ok && fwrite(&count, sizeof(count), 1, f)==1;
     psa_t *p;
-    kh_foreach_value(psa->cache, p, 
-        if(fwrite(&p->state, sizeof(p->state), 1, f)!=1) {
-            fclose(f);
-            return;
-        }
-        if(fwrite(&p->format, sizeof(p->format), 1, f)!=1) {
-            fclose(f);
-            return;
-        }
-        if(fwrite(&p->size, sizeof(p->size), 1, f)!=1) {
-            fclose(f);
-            return;
-        }
-        if(fwrite(p->prog, p->size, 1, f)!=1) {
-            fclose(f);
-            return;
-        }
+    kh_foreach_value(psa->cache, p,
+        ok = ok && fwrite(&p->state, sizeof(p->state), 1, f)==1
+                && fwrite(&p->format, sizeof(p->format), 1, f)==1
+                && fwrite(&p->size, sizeof(p->size), 1, f)==1
+                && fwrite(p->prog, p->size, 1, f)==1;
     );
-    fclose(f);
-    SHUT_LOGD("Saved a PSA with %d Precompiled Programs\n", psa->size);
+    ok = (fclose(f)==0) && ok;
+    if(ok && rename(tmpname, psa_name)==0) {
+        psa->dirty = 0;
+        SHUT_LOGD("Saved a PSA with %d Precompiled Programs\n", count);
+    } else
+        remove(tmpname);
+    free(tmpname);
 }
 
 void fpe_InitPSA(const char* name)
 {
     if(psa)
         return; // already inited
+    psa_id = psa_identity();
+    if(!psa_id) {
+        SHUT_LOGD("Not using PSA: cannot identify GLES backend\n");
+        return;
+    }
     psa = (gl4es_psa_t*)calloc(1, sizeof(gl4es_psa_t));
     psa->cache = kh_init(psalist);
     psa_name = strdup(name);

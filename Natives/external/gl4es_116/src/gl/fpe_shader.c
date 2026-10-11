@@ -2030,3 +2030,5 @@ void fpe_shader_reset_internals() {
 	comments=1;
 }
 #endif
+
+const char* fpe_shader_build_stamp(void) { return __DATE__ " " __TIME__; }

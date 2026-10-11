@@ -1356,3 +1356,5 @@ const char* builtinAttribInternalName(const char* name) {
   }
   return name;
 }
+
+const char* shaderconv_build_stamp(void) { return __DATE__ " " __TIME__; }
