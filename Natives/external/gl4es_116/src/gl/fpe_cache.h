@@ -4,12 +4,14 @@
 typedef struct fpe_state_s fpe_state_t;
 typedef fpe_state_t *kh_fpe_t;
 typedef struct fpe_fpe_s fpe_fpe_t;
+struct kh_fpecachelist_s;
+
 #define FPE_MRU_SIZE 8
 
 typedef struct fpe_cache_s {
-    kh_fpecachelist_t *map;
-    fpe_fpe_t         *mru[FPE_MRU_SIZE];
-    int                mru_count;
+    struct kh_fpecachelist_s *map;
+    fpe_fpe_t                *mru[FPE_MRU_SIZE];
+    int                       mru_count;
 } fpe_cache_t;
 
 fpe_cache_t* fpe_NewCache();
