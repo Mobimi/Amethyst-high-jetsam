@@ -9,6 +9,9 @@
 #include "stack.h"
 #include "stencil.h"
 
+#define QUAD_IDX_VERTS  65536   // 16-bit index range
+#define QUAD_IDX_COUNT  (QUAD_IDX_VERTS/4*6)
+
 typedef struct glstate_s {
     int                 dummy[16];  // dummy zone, test for memory overwriting...
     displaylist_state_t list;
@@ -26,8 +29,12 @@ typedef struct glstate_s {
     namestack_t         namestack;
     GLfloat             mvp_matrix[16];
     int                 mvp_matrix_dirty;
+    GLfloat             inv_mvp_matrix[16];
+    int                 inv_mvp_matrix_dirty;
     GLfloat             inv_mv_matrix[16];
     int                 inv_mv_matrix_dirty;
+    GLfloat             inv_p_matrix[16];
+    int                 inv_p_matrix_dirty;
     GLfloat             normal_matrix[9];
     int                 normal_matrix_dirty;
     matrixstack_t       *modelview_matrix;
@@ -109,6 +116,13 @@ typedef struct glstate_s {
     GLsizei             scratch_vertex_size;
     GLuint              scratch_indices;
     GLsizei             scratch_indices_size;
+    // static GL_QUADS -> triangles index table (0,1,2,0,2,3,...), mirrored in a GLES element buffer
+    GLushort*           quad_idx;
+    GLuint              quad_ibo;
+    int                 quad_ibo_state;     // 0: not tried, 1: ready, -1: unavailable (use client indices)
+    // persistent color conversion scratch buffer for realize_glenv (eliminates per-draw malloc/free)
+    void*               color_scratch[4];
+    size_t              color_scratch_cap[4];
     // Implementation read
     GLenum              readf; // implementation Read Format
     GLenum              readt; // implementation Read Type

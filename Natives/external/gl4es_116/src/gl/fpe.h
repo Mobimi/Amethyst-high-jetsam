@@ -226,8 +226,7 @@ typedef struct fpe_fpe_s {
   program_t *glprogram;
 } fpe_fpe_t;
 
-typedef struct kh_fpecachelist_s kh_fpecachelist_t;
-#define fpe_cache_t kh_fpecachelist_t
+typedef struct fpe_cache_s fpe_cache_t;
 
 typedef struct scratch_s {
     void*       scratch[16];

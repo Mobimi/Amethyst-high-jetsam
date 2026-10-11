@@ -12,6 +12,16 @@
 #include "fpe_shader.h"
 #include "shaderconv.h"
 #include "loader.h"
+#if defined(__APPLE__)
+#include <pthread.h>
+#include <time.h>
+#define PSA_BG_SAVE 1
+#define PSA_LD(x)    __atomic_load_n(&(x), __ATOMIC_ACQUIRE)
+#define PSA_ST(x,v)  __atomic_store_n(&(x), (v), __ATOMIC_RELEASE)
+#ifndef PSA_SAVE_INTERVAL
+#define PSA_SAVE_INTERVAL 15.0   // seconds between background saves of new programs
+#endif
+#endif
 
 //#define DEBUG
 #ifdef DEBUG
@@ -52,37 +62,72 @@ KHASH_MAP_INIT_FPE(fpecachelist, fpe_fpe_t *);
 // ********* Cache handling *********
 
 fpe_cache_t* fpe_NewCache() {
-    khash_t(fpecachelist) *cache = kh_init(fpecachelist);
+    fpe_cache_t *cache = (fpe_cache_t*)calloc(1, sizeof(fpe_cache_t));
+    if (cache) {
+        cache->map = kh_init(fpecachelist);
+    }
     return cache;
 }
 
 void fpe_disposeCache(fpe_cache_t* cache, int freeprog) {
     if(!cache) return;
-    fpe_fpe_t *m;
-    kh_foreach_value(cache, m, 
-        if(freeprog) {
-            if(m->glprogram)
-                gl4es_glDeleteProgram(m->glprogram->id);
-        }
-        free(m);
-    )
-    kh_destroy(fpecachelist, cache);
+    if(cache->map) {
+        fpe_fpe_t *m;
+        kh_foreach_value(cache->map, m, 
+            if(freeprog) {
+                if(m->glprogram)
+                    gl4es_glDeleteProgram(m->glprogram->id);
+            }
+            free(m);
+        )
+        kh_destroy(fpecachelist, cache->map);
+    }
+    free(cache);
 }
 
 fpe_fpe_t *fpe_GetCache(fpe_cache_t *cur, fpe_state_t *state, int fixed) {
-    khint_t k;
-    int r;
+    if(!cur || !state) return NULL;
 
-    k = kh_get(fpecachelist, cur, state);
-    if(k != kh_end(cur)) {
-        return kh_value(cur, k);
-    } else {
-        fpe_fpe_t *n = (fpe_fpe_t*)calloc(1, sizeof(fpe_fpe_t));
-        memcpy(&n->state, state, sizeof(fpe_state_t));
-        k = kh_put(fpecachelist, cur, &n->state, &r);
-        kh_value(cur, k) = n;
-        return n;
+    // Fast path: search MRU array first (Minecraft alternates across 4-8 hot shaders)
+    for(int i = 0; i < cur->mru_count; ++i) {
+        fpe_fpe_t *entry = cur->mru[i];
+        if(entry && memcmp(&entry->state, state, sizeof(fpe_state_t)) == 0) {
+            // Hit! Move to front if not already at MRU head
+            if(i > 0) {
+                for(int j = i; j > 0; --j) {
+                    cur->mru[j] = cur->mru[j-1];
+                }
+                cur->mru[0] = entry;
+            }
+            return entry;
+        }
     }
+
+    // Cache miss in MRU: query the hash map
+    khint_t k = kh_get(fpecachelist, cur->map, state);
+    fpe_fpe_t *result = NULL;
+    if(k != kh_end(cur->map)) {
+        result = kh_value(cur->map, k);
+    } else {
+        result = (fpe_fpe_t*)calloc(1, sizeof(fpe_fpe_t));
+        if(!result) return NULL;
+        memcpy(&result->state, state, sizeof(fpe_state_t));
+        int r;
+        k = kh_put(fpecachelist, cur->map, &result->state, &r);
+        kh_value(cur->map, k) = result;
+    }
+
+    // Insert into MRU head
+    int shift_limit = (cur->mru_count < FPE_MRU_SIZE) ? cur->mru_count : (FPE_MRU_SIZE - 1);
+    for(int j = shift_limit; j > 0; --j) {
+        cur->mru[j] = cur->mru[j-1];
+    }
+    cur->mru[0] = result;
+    if(cur->mru_count < FPE_MRU_SIZE) {
+        cur->mru_count++;
+    }
+
+    return result;
 }
 
 typedef struct psa_s {
@@ -90,6 +135,7 @@ typedef struct psa_s {
     GLenum      format;
     int         size;
     void*       prog;
+    struct psa_s *dead_next;    // replaced entry kept alive until the background writer is done
 } psa_t;
 
 KHASH_MAP_INIT_FPE(psalist, psa_t *);
@@ -99,6 +145,13 @@ typedef struct gl4es_psa_s {
     int             size;
     int             dirty;
     kh_psalist_t*   cache;    
+#ifdef PSA_BG_SAVE
+    volatile int    busy;       // background writer running
+    int             thread_valid;
+    pthread_t       thread;
+    double          last_save;
+    psa_t*          dead;
+#endif
 } gl4es_psa_t;
 
 static gl4es_psa_t *psa = NULL;
@@ -220,48 +273,159 @@ void fpe_readPSA()
     SHUT_LOGD("Loaded a PSA with %d Precompiled Programs\n", psa->size);
 }
 
-void fpe_writePSA()
+// Writes the given entries to a temporary file then renames it: if the app is killed mid-write (common on iOS)
+// the previous archive stays intact instead of being left truncated.
+static int psa_write_file(psa_t* const* list, int count)
 {
-    if(!psa || !psa_name)
-        return;
-    if(!psa->dirty)
-        return; // no need
-    // Write to a temporary file then rename: if the app is killed mid-write (common on iOS) the previous
-    // archive stays intact instead of being left truncated.
     size_t nlen = strlen(psa_name);
     char *tmpname = (char*)malloc(nlen + 5);
     if(!tmpname)
-        return;
+        return 0;
     memcpy(tmpname, psa_name, nlen);
     memcpy(tmpname+nlen, ".tmp", 5);
     FILE *f = fopen(tmpname, "wb");
     if(!f) {
         free(tmpname);
-        return;
+        return 0;
     }
-    int ok = 1;
     int version = CACHE_VERSION;
     int sz_fpe = sizeof(fpe_state_t);
-    int count = (int)kh_size(psa->cache);
-    ok = ok && fwrite(PSA_SIGN, sizeof(PSA_SIGN), 1, f)==1;
-    ok = ok && fwrite(&version, sizeof(version), 1, f)==1;
-    ok = ok && fwrite(&sz_fpe, sizeof(sz_fpe), 1, f)==1;
-    ok = ok && fwrite(&psa_id, sizeof(psa_id), 1, f)==1;
-    ok = ok && fwrite(&count, sizeof(count), 1, f)==1;
-    psa_t *p;
-    kh_foreach_value(psa->cache, p,
-        ok = ok && fwrite(&p->state, sizeof(p->state), 1, f)==1
-                && fwrite(&p->format, sizeof(p->format), 1, f)==1
-                && fwrite(&p->size, sizeof(p->size), 1, f)==1
-                && fwrite(p->prog, p->size, 1, f)==1;
-    );
+    int ok = fwrite(PSA_SIGN, sizeof(PSA_SIGN), 1, f)==1
+          && fwrite(&version, sizeof(version), 1, f)==1
+          && fwrite(&sz_fpe, sizeof(sz_fpe), 1, f)==1
+          && fwrite(&psa_id, sizeof(psa_id), 1, f)==1
+          && fwrite(&count, sizeof(count), 1, f)==1;
+    for(int i=0; ok && i<count; ++i) {
+        const psa_t *p = list[i];
+        ok = fwrite(&p->state, sizeof(p->state), 1, f)==1
+          && fwrite(&p->format, sizeof(p->format), 1, f)==1
+          && fwrite(&p->size, sizeof(p->size), 1, f)==1
+          && fwrite(p->prog, p->size, 1, f)==1;
+    }
     ok = (fclose(f)==0) && ok;
-    if(ok && rename(tmpname, psa_name)==0) {
-        psa->dirty = 0;
+    ok = ok && rename(tmpname, psa_name)==0;
+    if(ok)
         SHUT_LOGD("Saved a PSA with %d Precompiled Programs\n", count);
-    } else
+    else
         remove(tmpname);
     free(tmpname);
+    return ok;
+}
+
+// entries of the cache as a plain array (caller frees)
+static psa_t** psa_snapshot(int *count)
+{
+    int n = (int)kh_size(psa->cache);
+    psa_t **list = (psa_t**)malloc((n?n:1)*sizeof(psa_t*));
+    if(!list)
+        return NULL;
+    int i = 0;
+    psa_t *p;
+    kh_foreach_value(psa->cache, p, if(i<n) list[i++] = p;);
+    *count = i;
+    return list;
+}
+
+#ifdef PSA_BG_SAVE
+static pthread_mutex_t psa_lock = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct psa_job_s {
+    psa_t **list;
+    int     count;
+} psa_job_t;
+
+static double psa_now(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec*1e-9;
+}
+
+static void* psa_writer(void *arg)
+{
+    psa_job_t *job = (psa_job_t*)arg;
+    int ok = psa_write_file(job->list, job->count);
+    free(job->list);
+    free(job);
+    pthread_mutex_lock(&psa_lock);
+    if(!ok)
+        PSA_ST(psa->dirty, 1);     // retry on a later tick
+    psa_t *d = psa->dead;
+    psa->dead = NULL;
+    PSA_ST(psa->busy, 0);
+    pthread_mutex_unlock(&psa_lock);
+    while(d) {
+        psa_t *n = d->dead_next;
+        free(d->prog);
+        free(d);
+        d = n;
+    }
+    return NULL;
+}
+
+static void psa_join(void)
+{
+    if(psa && psa->thread_valid) {
+        pthread_join(psa->thread, NULL);
+        psa->thread_valid = 0;
+    }
+}
+#endif
+
+// Called regularly from the render thread (cheap when nothing changed): new programs are saved in the
+// background so that a killed app (no clean shutdown on iOS) still keeps its precompiled shaders.
+void fpe_PSATick()
+{
+#ifdef PSA_BG_SAVE
+    if(!psa || !PSA_LD(psa->dirty) || PSA_LD(psa->busy))
+        return;
+    double now = psa_now();
+    if(now - psa->last_save < PSA_SAVE_INTERVAL)
+        return;
+    psa->last_save = now;
+    psa_join();     // previous writer finished (busy==0): reap it
+    psa_job_t *job = (psa_job_t*)malloc(sizeof(psa_job_t));
+    if(!job)
+        return;
+    pthread_mutex_lock(&psa_lock);
+    job->list = psa_snapshot(&job->count);
+    if(!job->list) {
+        pthread_mutex_unlock(&psa_lock);
+        free(job);
+        return;
+    }
+    PSA_ST(psa->dirty, 0);
+    PSA_ST(psa->busy, 1);
+    pthread_mutex_unlock(&psa_lock);
+    if(pthread_create(&psa->thread, NULL, psa_writer, job)==0) {
+        psa->thread_valid = 1;
+    } else {
+        free(job->list);
+        free(job);
+        pthread_mutex_lock(&psa_lock);
+        PSA_ST(psa->busy, 0);
+        PSA_ST(psa->dirty, 1);
+        pthread_mutex_unlock(&psa_lock);
+    }
+#endif
+}
+
+void fpe_writePSA()
+{
+    if(!psa || !psa_name)
+        return;
+#ifdef PSA_BG_SAVE
+    psa_join();
+#endif
+    if(!psa->dirty)
+        return; // no need
+    int count = 0;
+    psa_t **list = psa_snapshot(&count);
+    if(!list)
+        return;
+    if(psa_write_file(list, count))
+        psa->dirty = 0;
+    free(list);
 }
 
 void fpe_InitPSA(const char* name)
@@ -276,10 +440,16 @@ void fpe_InitPSA(const char* name)
     psa = (gl4es_psa_t*)calloc(1, sizeof(gl4es_psa_t));
     psa->cache = kh_init(psalist);
     psa_name = strdup(name);
+#ifdef PSA_BG_SAVE
+    psa->last_save = psa_now();
+#endif
 }
 
 void fpe_FreePSA()
 {
+#ifdef PSA_BG_SAVE
+    psa_join();
+#endif
     if(!psa)
         return; // nothing to init
     
@@ -318,8 +488,9 @@ void fpe_AddProgramPSA(GLuint program, fpe_state_t* state)
     // if state contains custom vertex of fragment shader, then ignore
     if(state->vertex_prg_enable || state->fragment_prg_enable)
         return;
-    psa->dirty = 1;
     psa_t *p = (psa_t*)calloc(1, sizeof(psa_t));
+    if(!p)
+        return;
     memcpy(&p->state, state, sizeof(p->state));
 
     int l = gl4es_getProgramBinary(program, &p->size, &p->format, &p->prog);
@@ -329,15 +500,33 @@ void fpe_AddProgramPSA(GLuint program, fpe_state_t* state)
         return;
     }
     // add program
+#ifdef PSA_BG_SAVE
+    pthread_mutex_lock(&psa_lock);
+#endif
     int ret;
     khint_t k = kh_put(psalist, psa->cache, &p->state, &ret);
     if(!ret) {
+        // replace the existing entry (the old key points inside the old entry: update it too)
         psa_t *p2 = kh_value(psa->cache, k);
-        free(p2->prog);
-        p2->prog = NULL;
-        free(p2);
+#ifdef PSA_BG_SAVE
+        if(PSA_LD(psa->busy)) {     // the background writer may still read it: freed when it is done
+            p2->dead_next = psa->dead;
+            psa->dead = p2;
+            p2 = NULL;
+        }
+#endif
+        if(p2) {
+            free(p2->prog);
+            free(p2);
+        }
     }
+    kh_key(psa->cache, k) = &p->state;
     kh_value(psa->cache, k) = p;
-    // all done
     psa->size = kh_size(psa->cache);
+#ifdef PSA_BG_SAVE
+    PSA_ST(psa->dirty, 1);
+    pthread_mutex_unlock(&psa_lock);
+#else
+    psa->dirty = 1;
+#endif
 }

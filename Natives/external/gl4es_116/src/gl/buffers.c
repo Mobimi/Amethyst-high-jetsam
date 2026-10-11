@@ -94,6 +94,25 @@ void rebind_real_buff_arrays(int old_buffer, int new_buffer) {
     }
 }
 
+// Reserve the CPU shadow storage (buff->data) for a buffer that is (re)defined with 'size' bytes.
+// Must be called BEFORE buff->size is updated (it uses the previous logical size).
+// - same size / smaller: allocation is kept (same behaviour as before).
+// - bigger: the previous code always did free()+malloc(). Now the current allocation is
+//   reused when it is already large enough and the unused tail stays small (<= 12.5% + 4KB),
+//   which avoids large malloc/free churn (page faults on iOS) when chunk VBOs are rebuilt
+//   with slightly varying sizes. A reallocation is always sized exactly 'size', so memory use
+//   is never higher than before by more than that bound.
+static void buffer_reserve_shadow(glbuffer_t *buff, GLsizeiptr size)
+{
+    if (buff->data && size <= buff->cap
+        && (size <= buff->size || (buff->cap - size) <= (size >> 3) + 4096))
+        return;
+    if (buff->data)
+        free(buff->data);
+    buff->data = malloc(size);
+    buff->cap = buff->data ? size : 0;
+}
+
 void APIENTRY_GL4ES gl4es_glGenBuffers(GLsizei n, GLuint * buffers) {
     DBG(printf("glGenBuffers(%i, %p)\n", n, buffers);)
 	noerrorShim();
@@ -110,7 +129,7 @@ void APIENTRY_GL4ES gl4es_glGenBuffers(GLsizei n, GLuint * buffers) {
         khint_t k;
    	    int ret;
         k = kh_put(buff, list, b, &ret);
-        glbuffer_t *buff = kh_value(list, k) = malloc(sizeof(glbuffer_t));
+        glbuffer_t *buff = kh_value(list, k) = calloc(1, sizeof(glbuffer_t));
         buff->buffer = b;
         buff->type = 0; // no target for now
         buff->data = NULL;
@@ -134,6 +153,11 @@ void APIENTRY_GL4ES gl4es_glBindBuffer(GLenum target, GLuint buffer) {
 		errorShim(GL_INVALID_ENUM);
 		return;
 	}
+    glbuffer_t *curr = getbuffer_buffer(target);
+    if ((buffer == 0 && curr == NULL) || (curr && curr->buffer == buffer)) {
+        noerrorShim();
+        return;
+    }
     // if buffer = 0 => unbind buffer!
     if (buffer == 0) {
         // unbind buffer
@@ -145,7 +169,7 @@ void APIENTRY_GL4ES gl4es_glBindBuffer(GLenum target, GLuint buffer) {
         glbuffer_t *buff = NULL;
         if (k == kh_end(list)){
             k = kh_put(buff, list, buffer, &ret);
-            buff = kh_value(list, k) = malloc(sizeof(glbuffer_t));
+            buff = kh_value(list, k) = calloc(1, sizeof(glbuffer_t));
             buff->buffer = buffer;
             buff->type = target;
             buff->data = NULL;
@@ -202,12 +226,7 @@ void APIENTRY_GL4ES gl4es_glBufferData(GLenum target, GLsizeiptr size, const GLv
         DBG(printf(" => real VBO %d\n", buff->real_buffer);)
     }
         
-    if (buff->data && buff->size<size) {
-        free(buff->data);
-        buff->data = NULL;
-    }
-    if(!buff->data)
-        buff->data = malloc(size);
+    buffer_reserve_shadow(buff, size);
     buff->size = size;
     buff->usage = usage;
     DBG(printf("\t buff->data = %p (size=%zd)\n", buff->data, size);)
@@ -254,12 +273,7 @@ void APIENTRY_GL4ES gl4es_glNamedBufferData(GLuint buffer, GLsizeiptr size, cons
         gles_glBufferData(buff->type, size, data, usage);
     }
 
-    if (buff->data && buff->size<size) {
-        free(buff->data);
-        buff->data = NULL;
-    }
-    if(!buff->data)
-        buff->data = malloc(size);
+    buffer_reserve_shadow(buff, size);
     buff->size = size;
     buff->usage = usage;
     buff->access = GL_READ_WRITE;

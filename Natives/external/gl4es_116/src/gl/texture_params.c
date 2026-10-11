@@ -189,8 +189,12 @@ void APIENTRY_GL4ES gl4es_glBindTexture(GLenum target, GLuint texture) {
         gltexture_t *tex = NULL;
         const GLuint itarget = what_target(target);
 
+        gltexture_t *bound = glstate->texture.bound[glstate->texture.active][itarget];
+        if (bound && bound->texture == texture)
+            return;
+
         tex = gl4es_getTexture(target, texture);
-        if (glstate->texture.bound[glstate->texture.active][itarget] == tex)
+        if (bound == tex)
             return;
         
         FLUSH_BEGINEND;

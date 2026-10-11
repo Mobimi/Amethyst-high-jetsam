@@ -5,6 +5,9 @@
 #include "glcase.h"
 #include "light.h"
 #include "state.h"
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#endif
 
 GLvoid *copy_gl_array(const GLvoid *src,
                       GLenum from, GLsizei width, GLsizei stride,
@@ -478,28 +481,51 @@ void *copy_gl_array_bgra(void* dest, const void *ptr, GLint stride, GLsizei widt
     src += skip*(stride);
 
     static const float d = 1.0f/255.0f;
-    for (int i=skip; i<count; i++) {
-        #if defined(__ARM_NEON__) && !defined(__APPLE__)
-        int lsrc = *(int*)src;
-        lsrc = (lsrc&0xff00ff00) | ((lsrc&0x00ff0000)>>16) | ((lsrc&0x000000ff)<<16);
-        asm volatile (
-        "vmov           s12, %1              \n\t"   // because you cannot vmovl.u8 d6, s11
-        "vmovl.u8       q3, d6               \n\t"   // Expand to 16-bit (so unsetuped s13 is expanded in d7)
-        "vmovl.u16      q3, d6               \n\t"   // Expand to 32-bit, ignoring expanded d7
-        "vcvt.f32.u32   q3, q3               \n\t"   // Convert to float
-        "vmul.f32       q3, q3, %y2          \n\t"   // Normalize
-        "vst1.f32       {q3}, [%0]!          \n\t"   // Store, next
-        :"+r"(dst) :"r"(lsrc), "w"(d)
-        : "q3", "memory"
-        );
-        #else
+    int n = count - skip;
+    int i = 0;
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    if (stride == 4) {
+        const float32x4_t vscale = vdupq_n_f32(1.0f / 255.0f);
+        static const uint8_t bgra_to_rgba_tbl[16] = {
+            2, 1, 0, 3,
+            6, 5, 4, 7,
+            10, 9, 8, 11,
+            14, 13, 12, 15
+        };
+        const uint8x16_t tbl = vld1q_u8(bgra_to_rgba_tbl);
+
+        for (; i + 4 <= n; i += 4) {
+            uint8x16_t raw = vld1q_u8(src);
+            uint8x16_t rgba = vqtbl1q_u8(raw, tbl);
+
+            uint8x8_t low8 = vget_low_u8(rgba);
+            uint16x8_t low16 = vmovl_u8(low8);
+            uint32x4_t v0_u32 = vmovl_u16(vget_low_u16(low16));
+            uint32x4_t v1_u32 = vmovl_u16(vget_high_u16(low16));
+            vst1q_f32(dst, vmulq_f32(vcvtq_f32_u32(v0_u32), vscale));
+            vst1q_f32(dst + 4, vmulq_f32(vcvtq_f32_u32(v1_u32), vscale));
+
+            uint8x8_t high8 = vget_high_u8(rgba);
+            uint16x8_t high16 = vmovl_u8(high8);
+            uint32x4_t v2_u32 = vmovl_u16(vget_low_u16(high16));
+            uint32x4_t v3_u32 = vmovl_u16(vget_high_u16(high16));
+            vst1q_f32(dst + 8, vmulq_f32(vcvtq_f32_u32(v2_u32), vscale));
+            vst1q_f32(dst + 12, vmulq_f32(vcvtq_f32_u32(v3_u32), vscale));
+
+            dst += 16;
+            src += 16;
+        }
+    }
+#endif
+
+    for (; i < n; i++) {
         const GLubyte b = src[0], g = src[1], r = src[2], a = src[3];
-        *dst++ = r*d;
-        *dst++ = g*d;
-        *dst++ = b*d;
-        *dst++ = a*d;
-        #endif
-        src+=stride;
+        *dst++ = r * d;
+        *dst++ = g * d;
+        *dst++ = b * d;
+        *dst++ = a * d;
+        src += stride;
     }
     return dest;
 }

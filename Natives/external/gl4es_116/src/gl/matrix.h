@@ -55,5 +55,23 @@ static inline GLfloat* getMVPMat()
 	return glstate->mvp_matrix;
 }
 
+static inline GLfloat* getInvMVPMat()
+{
+	if(glstate->inv_mvp_matrix_dirty || glstate->mvp_matrix_dirty) {
+		matrix_inverse(getMVPMat(), glstate->inv_mvp_matrix);
+		glstate->inv_mvp_matrix_dirty = 0;
+	}
+	return glstate->inv_mvp_matrix;
+}
+
+static inline GLfloat* getInvPMat()
+{
+	if(glstate->inv_p_matrix_dirty) {
+		matrix_inverse(getPMat(), glstate->inv_p_matrix);
+		glstate->inv_p_matrix_dirty = 0;
+	}
+	return glstate->inv_p_matrix;
+}
+
 
 #endif // _GL4ES_MATRIX_H_

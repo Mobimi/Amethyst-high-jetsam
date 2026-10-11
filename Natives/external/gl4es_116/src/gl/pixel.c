@@ -6,6 +6,9 @@
 #include "gl4es.h"
 #include "glstate.h"
 #include "debug.h"
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#endif
 
 #ifdef __BIG_ENDIAN__
 #define GL_INT8_REV     GL_UNSIGNED_INT_8_8_8_8
@@ -816,20 +819,37 @@ bool pixel_convert(const GLvoid *src, GLvoid **dst,
     // simple BGRA <-> RGBA / UNSIGNED_BYTE 
     if ((((src_format == GL_BGRA) && (dst_format == GL_RGBA)) || ((src_format == GL_RGBA) && (dst_format == GL_BGRA))) 
         && (dst_type == GL_UNSIGNED_BYTE) && ((src_type == GL_UNSIGNED_BYTE))) {
-        GLuint tmp;
+        // Both formats are 4 bytes/pixel here (src_stride == dst_stride == 4), so each row is a
+        // contiguous run of 32-bit words. Work on a per-row basis with memcpy-based 32-bit
+        // loads/stores (alignment-safe, no strict-aliasing UB) so the compiler can vectorize it.
+        // Read-before-write per element is kept, so exact in-place overlap stays correct.
         for (int i = 0; i < height; i++) {
-			for (int j = 0; j < width; j++) {
-				tmp = *(const GLuint*)src_pos;
+            const unsigned char *s = (const unsigned char*)src_pos;
+            unsigned char *d = (unsigned char*)dst_pos;
+            GLuint j = 0;
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+            for (; j + 16 <= width; j += 16) {
+                uint8x16x4_t pix = vld4q_u8(s + (size_t)j * 4);
+                uint8x16x4_t swizzled;
+                swizzled.val[0] = pix.val[2]; // swap B and R
+                swizzled.val[1] = pix.val[1]; // keep G
+                swizzled.val[2] = pix.val[0]; // swap R and B
+                swizzled.val[3] = pix.val[3]; // keep A
+                vst4q_u8(d + (size_t)j * 4, swizzled);
+            }
+#endif
+            for (; j < width; j++) {
+                GLuint tmp;
+                memcpy(&tmp, s + (size_t)j*4, 4);
                 #ifdef __BIG_ENDIAN__
-                *(GLuint*)dst_pos = (tmp&0x00ff00ff) | ((tmp&0x0000ff00)<<16) | ((tmp&0xff000000)>>16);
+                tmp = (tmp&0x00ff00ff) | ((tmp&0x0000ff00)<<16) | ((tmp&0xff000000)>>16);
                 #else
-				*(GLuint*)dst_pos = (tmp&0xff00ff00) | ((tmp&0x00ff0000)>>16) | ((tmp&0x000000ff)<<16);
+                tmp = (tmp&0xff00ff00) | ((tmp&0x00ff0000)>>16) | ((tmp&0x000000ff)<<16);
                 #endif
-				src_pos += src_stride;
-				dst_pos += dst_stride;
-			}
-			dst_pos += dst_width;
-            src_pos += src_widthadj;
+                memcpy(d + (size_t)j*4, &tmp, 4);
+            }
+            src_pos += (uintptr_t)width*4 + src_widthadj;
+            dst_pos += (uintptr_t)width*4 + dst_width;
         }
         return true;
     }

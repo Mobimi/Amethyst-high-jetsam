@@ -544,6 +544,22 @@ void DeleteGLState(void* oldstate) {
     // scratch buffer
     if(state->scratch)
         free(state->scratch);
+    if(state->quad_ibo) {
+        LOAD_GLES(glDeleteBuffers);
+        if(gles_glDeleteBuffers)
+            gles_glDeleteBuffers(1, &state->quad_ibo);
+        state->quad_ibo = 0;
+    }
+    if(state->quad_idx)
+        free(state->quad_idx);
+    state->quad_idx = NULL;
+    state->quad_ibo_state = 0;
+    for(int a=0; a<4; ++a) {
+        if(state->color_scratch[a])
+            free(state->color_scratch[a]);
+        state->color_scratch[a] = NULL;
+        state->color_scratch_cap[a] = 0;
+    }
     // merger buffers
     if(state->merger_master)
         free(state->merger_master);

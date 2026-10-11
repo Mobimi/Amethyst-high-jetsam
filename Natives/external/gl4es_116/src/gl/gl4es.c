@@ -11,6 +11,7 @@
 #include "debug.h"
 #include "enum_info.h"
 #include "fpe.h"
+#include "fpe_cache.h"
 #include "framebuffers.h"
 #include "glstate.h"
 #include "init.h"
@@ -1144,6 +1145,7 @@ void APIENTRY_GL4ES gl4es_glClear(GLbitfield mask) {
     mask &= GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
     LOAD_GLES(glClear);
     gles_glClear(mask);
+    fpe_PSATick();
 }
 AliasExport(void,glClear,,(GLbitfield mask));
 
@@ -1295,6 +1297,7 @@ NonAliasExportDecl(void,gl4es_post_swap,())
 #endif
 {
 		show_fps();
+    fpe_PSATick();
 
     // If drawing in fbo, rebind it...
     if (globals4es.usefbo) {

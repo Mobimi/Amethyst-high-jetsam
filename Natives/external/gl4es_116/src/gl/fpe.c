@@ -22,8 +22,10 @@
 #endif
 
 void free_scratch(scratch_t* scratch) {
-    for(int i=0; i<scratch->size; ++i)
-        free(scratch->scratch[i]);
+    for(int i=0; i<scratch->size; ++i) {
+        if(scratch->scratch[i])
+            free(scratch->scratch[i]);
+    }
 }
 
 void fpe_Init(glstate_t *glstate) {
@@ -833,6 +835,13 @@ void APIENTRY_GL4ES fpe_glDrawElements(GLenum mode, GLsizei count, GLenum type, 
     realize_glenv(mode==GL_POINTS, 0, count, type, indices, &scratch);
     LOAD_GLES(glDrawElements);
     int use_vbo = 0;
+    if(type==GL_UNSIGNED_SHORT && glstate->quad_ibo_state>0
+        && (uintptr_t)indices>=(uintptr_t)glstate->quad_idx
+        && (uintptr_t)indices<(uintptr_t)(glstate->quad_idx+QUAD_IDX_COUNT)) {
+        // static GL_QUADS index table: draw from its element buffer (the CPU copy is only the offset base)
+        bindBuffer(GL_ELEMENT_ARRAY_BUFFER, glstate->quad_ibo);
+        indices = (GLvoid*)((uintptr_t)indices - (uintptr_t)glstate->quad_idx);
+    } else
     if(glstate->vao->elements && glstate->vao->elements->real_buffer && indices>=glstate->vao->elements->data && indices<=((void*)((char*)glstate->vao->elements->data+glstate->vao->elements->size))) {
         use_vbo = 1;
         bindBuffer(GL_ELEMENT_ARRAY_BUFFER, glstate->vao->elements->real_buffer);
@@ -905,7 +914,13 @@ void APIENTRY_GL4ES fpe_glDrawElementsInstanced(GLenum mode, GLsizei count, GLen
     int use_vbo = 0;
     void* inds;
     GLfloat tmp[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-    if(glstate->vao->elements && glstate->vao->elements->real_buffer && indices>=glstate->vao->elements->data && indices<=((void*)((char*)glstate->vao->elements->data+glstate->vao->elements->size))) {
+    if(type==GL_UNSIGNED_SHORT && glstate->quad_ibo_state>0
+        && (uintptr_t)indices>=(uintptr_t)glstate->quad_idx
+        && (uintptr_t)indices<(uintptr_t)(glstate->quad_idx+QUAD_IDX_COUNT)) {
+        use_vbo = 1;
+        bindBuffer(GL_ELEMENT_ARRAY_BUFFER, glstate->quad_ibo);
+        inds = (void*)((uintptr_t)indices - (uintptr_t)glstate->quad_idx);
+    } else if(glstate->vao->elements && glstate->vao->elements->real_buffer && indices>=glstate->vao->elements->data && indices<=((void*)((char*)glstate->vao->elements->data+glstate->vao->elements->size))) {
         use_vbo = 1;
         bindBuffer(GL_ELEMENT_ARRAY_BUFFER, glstate->vao->elements->real_buffer);
         inds = (void*)((uintptr_t)indices - (uintptr_t)(glstate->vao->elements->data));
@@ -1181,8 +1196,7 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
             GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_MVP], 1, GL_FALSE, getMVPMat());
             GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_MVP_T], 1, GL_TRUE, getMVPMat());
             if(glprogram->builtin_matrix[MAT_MVP_I]!=-1 || glprogram->builtin_matrix[MAT_MVP_IT]!=-1) {
-                GLfloat invmat[16];
-                matrix_inverse(getMVPMat(), invmat);
+                const GLfloat *invmat = getInvMVPMat();
                 GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_MVP_I], 1, GL_FALSE, invmat);
                 GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_MVP_IT], 1, GL_TRUE, invmat);
             }
@@ -1203,8 +1217,7 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
             GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_P], 1, GL_FALSE, getPMat());
             GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_P_T], 1, GL_TRUE, getPMat());
             if(glprogram->builtin_matrix[MAT_P_I]!=-1 || glprogram->builtin_matrix[MAT_P_IT]!=-1) {
-                GLfloat invmat[16];
-                matrix_inverse(getPMat(), invmat);
+                const GLfloat *invmat = getInvPMat();
                 GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_P_I], 1, GL_FALSE, invmat);
                 GoUniformMatrix4fv(glprogram, glprogram->builtin_matrix[MAT_P_IT], 1, GL_TRUE, invmat);
             }
@@ -1486,8 +1499,29 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
                         v->type = GL_FLOAT;
                         v->normalized = 0;
                         v->integer = 0;
-                        v->pointer = scratch->scratch[scratch->size++] = copy_gl_pointer_color_bgra(ptr, w->stride, 4, imin, imax);
-                        v->pointer = (char*)v->pointer - imin*4*sizeof(GLfloat);   // adjust for min...
+                        size_t needed = (size_t)(imax - imin) * 4 * sizeof(GLfloat);
+                        void* scratch_buf = NULL;
+                        if(scratch->size < 4) {
+                            int sidx = scratch->size;
+                            if(!glstate->color_scratch[sidx] || glstate->color_scratch_cap[sidx] < needed) {
+                                size_t new_cap = needed + (needed >> 1) + 4096;
+                                void* p = realloc(glstate->color_scratch[sidx], new_cap);
+                                if(p) {
+                                    glstate->color_scratch[sidx] = p;
+                                    glstate->color_scratch_cap[sidx] = new_cap;
+                                }
+                            }
+                            if(glstate->color_scratch[sidx] && glstate->color_scratch_cap[sidx] >= needed) {
+                                scratch_buf = glstate->color_scratch[sidx];
+                                copy_gl_pointer_color_bgra_noalloc(scratch_buf, ptr, w->stride, 4, imin, imax);
+                                scratch->scratch[scratch->size++] = NULL; // managed by glstate
+                            }
+                        }
+                        if(!scratch_buf) {
+                            scratch_buf = copy_gl_pointer_color_bgra(ptr, w->stride, 4, imin, imax);
+                            scratch->scratch[scratch->size++] = scratch_buf;
+                        }
+                        v->pointer = (char*)scratch_buf - imin*4*sizeof(GLfloat);   // adjust for min...
                         v->stride = 0;
                         v->buffer = NULL;
                         v->real_buffer = 0;
