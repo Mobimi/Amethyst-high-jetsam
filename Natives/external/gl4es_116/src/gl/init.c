@@ -678,36 +678,24 @@ void initialize_gl4es() {
             cwd[0]='\0';
             // TODO: What to do on ANDROID and EMSCRIPTEN?
             const char* custom_psa = GetEnvVar("LIBGL_PSA_FOLDER");
+            const char* psa_base = NULL;
 #ifdef __linux__
-            const char* home = GetEnvVar("HOME");
-            if(custom_psa)
-              strcpy(cwd, custom_psa);
-            else if(home)
-                strcpy(cwd, home);
-            if(strlen(cwd))
-              if(cwd[strlen(cwd)]!='/')
-                  strcat(cwd, "/");
+            psa_base = custom_psa ? custom_psa : GetEnvVar("HOME");
 #elif defined AMIGAOS4
-            if(custom_psa)
-              strcpy(cwd, custom_psa);
-            else
-              strcpy(cwd, "PROGDIR:");
+            psa_base = custom_psa ? custom_psa : "PROGDIR:";
 #elif defined(__APPLE__)
-            const char* home = GetEnvVar("AME_HOME");
-            if(custom_psa)
-              strcpy(cwd, custom_psa);
-            else if(home)
-              strcpy(cwd, home);
-            else {
-              const char* h = GetEnvVar("HOME");
-              if(h) strcpy(cwd, h);
-            }
-            if(strlen(cwd))
-              if(cwd[strlen(cwd)-1]!='/')
-                  strcat(cwd, "/");
+            psa_base = custom_psa ? custom_psa : GetEnvVar("AME_HOME");
+            if(!psa_base)
+                psa_base = GetEnvVar("HOME");
 #endif
-            if(strlen(cwd)) {
-                strcat(cwd, ".gl4es.psa");
+            if(psa_base && psa_base[0]) {
+                size_t base_len = strlen(psa_base);
+                const char* separator = (psa_base[base_len-1]=='/' || psa_base[base_len-1]==':') ? "" : "/";
+                int path_len = snprintf(cwd, sizeof(cwd), "%s%s.gl4es.psa", psa_base, separator);
+                if(path_len < 0 || (size_t)path_len >= sizeof(cwd))
+                    cwd[0] = '\0';
+            }
+            if(cwd[0]) {
                 fpe_InitPSA(cwd);
                 fpe_readPSA();
             }
