@@ -12,6 +12,8 @@
 #include "fpe_shader.h"
 #include "shaderconv.h"
 #include "loader.h"
+#include "envvars.h"
+#include "gl4es.h"
 #if defined(__APPLE__)
 #include <pthread.h>
 #include <time.h>
@@ -156,6 +158,35 @@ typedef struct gl4es_psa_s {
 
 static gl4es_psa_t *psa = NULL;
 static char *psa_name = NULL;
+
+// Periodic growth diagnostic (opt-in): AMETHYST_GL4ES_GROWTH_LOG=1 logs the live FPE-program
+// cache size and the PSA archive size every 10s, so a long session can be checked for leaks.
+#ifdef __APPLE__
+static double amethyst_now_s(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec + (double)ts.tv_nsec*1e-9;
+}
+#endif
+static void amethyst_growth_log(void)
+{
+#ifdef __APPLE__
+    static int on = -1;
+    static double last = 0;
+    if(on < 0) {
+        const char *e = GetEnvVar("AMETHYST_GL4ES_GROWTH_LOG");
+        on = (e && strcmp(e, "1") == 0) ? 1 : 0;
+    }
+    if(!on) return;
+    double now = amethyst_now_s();
+    if(now - last < 10.0) return;
+    last = now;
+    int fpe_entries = (glstate && glstate->fpe_cache) ? (int)kh_size(glstate->fpe_cache->map) : -1;
+    printf("[Amethyst Growth] fpe_entries=%d psa_entries=%d\n", fpe_entries, psa ? psa->size : -1);
+    fflush(stdout);
+#endif
+}
 
 // Sanity limits for archive contents (a corrupt/foreign file must never trigger huge allocations)
 #define PSA_MAX_ENTRIES     65536
@@ -376,9 +407,22 @@ static void psa_join(void)
 // background so that a killed app (no clean shutdown on iOS) still keeps its precompiled shaders.
 void fpe_PSATick()
 {
+    amethyst_growth_log();
 #ifdef PSA_BG_SAVE
     if(!psa || !PSA_LD(psa->dirty) || PSA_LD(psa->busy))
         return;
+    // Periodic background save is opt-in (DEFAULT OFF): set AMETHYST_GL4ES_PSA_BG_SAVE=1 to enable.
+    // When OFF the archive is still written once on clean shutdown (fpe_writePSA), like stock gl4es,
+    // so the render thread never pays the periodic snapshot / thread spawn cost.
+    {
+        static int s_bg = -1;
+        if(s_bg < 0) {
+            const char *e = GetEnvVar("AMETHYST_GL4ES_PSA_BG_SAVE");
+            s_bg = (e && strcmp(e, "1") == 0) ? 1 : 0;
+        }
+        if(!s_bg)
+            return;
+    }
     double now = psa_now();
     if(now - psa->last_save < PSA_SAVE_INTERVAL)
         return;
