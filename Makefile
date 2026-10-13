@@ -330,7 +330,7 @@ dep_gl4es_116:
 	rm -rf $(WORKINGDIR)/gl4es_116/CMakeCache.txt $(WORKINGDIR)/gl4es_116/CMakeFiles
 	cd $(WORKINGDIR)/gl4es_116 && cmake \
 		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-		-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 		-DCMAKE_CROSSCOMPILING=true \
 		-DCMAKE_SYSTEM_NAME=Darwin \
 		-DCMAKE_SYSTEM_PROCESSOR=aarch64 \
@@ -345,7 +345,7 @@ dep_gl4es_116:
 		-DSTATICLIB=OFF \
 		$(SOURCEDIR)/Natives/external/gl4es_116
 
-	cmake --build $(WORKINGDIR)/gl4es_116 --config $(CMAKE_BUILD_TYPE) -j$(JOBS) --target GL
+	cmake --build $(WORKINGDIR)/gl4es_116 --config RelWithDebInfo -j$(JOBS) --target GL
 	if [ -f "$(WORKINGDIR)/gl4es_116/lib/libgl4es_116.dylib" ]; then \
 		cp $(WORKINGDIR)/gl4es_116/lib/libgl4es_116.dylib $(WORKINGDIR)/libgl4es_116.dylib; \
 	elif [ -f "$(WORKINGDIR)/gl4es_116/src/libgl4es_116.dylib" ]; then \
