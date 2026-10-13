@@ -294,6 +294,16 @@ int main(int argc, char *argv[]) {
 
     setenv("BUNDLE_PATH", dirname(argv[0]), 1);
     isJailbroken = init_checkForJailbreak();
+
+    // StikDebug debugger attach on iOS 18 may deliver SIGTRAP during JIT enablement.
+    // Do not change SIGTRAP semantics on any JIT26/TXM path because that path uses
+    // BRK-based JIT control flow (JIT26CreateRegionLegacy / JIT26SendJITScript).
+    JITFlags jitFlags = DeviceGetJITFlags(NO);
+    if ((jitFlags & (JIT_FLAG_IS_IOS_26 | JIT_FLAG_FORCE_MIRRORED | JIT_FLAG_HAS_TXM)) == 0) {
+        signal(SIGTRAP, SIG_IGN);
+        signal(SIGINT, SIG_IGN);
+    }
+
     init_setupHomeDirectory();
     init_redirectStdio();
     init_logDeviceAndVer(argv[0]);
