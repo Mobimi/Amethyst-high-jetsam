@@ -1,6 +1,7 @@
 #include "../glx/hardext.h"
 #include "array.h"
 #include "enum_info.h"
+#include "envvars.h"
 #include "fpe.h"
 #include "gl4es.h"
 #include "gles.h"
@@ -454,6 +455,15 @@ if(count>500000) return;
 // GL_QUADS drawn from arrays (the dominant draw type of Minecraft: tessellator, GUI, particles, VBO terrain).
 // ES2+ fast path: the quad->triangle index list lives in one static GLES element buffer created once per
 // context, so no index data is generated, copied, scanned or re-uploaded per draw.
+static int quad_ibo_enabled(void) {
+    static int v = -1;
+    if (v < 0) {
+        const char* e = GetEnvVar("LIBGL_QUADIBO");
+        v = (e && e[0] == '1') ? 1 : 0;
+    }
+    return v;
+}
+
 static int quad_ibo_ready(void) {
     if (glstate->quad_ibo_state)
         return glstate->quad_ibo_state > 0;
@@ -487,7 +497,9 @@ static int quad_ibo_ready(void) {
 }
 
 static void draw_quad_arrays(GLint first, GLsizei count) {
-    if (first >= 0 && (first & 3) == 0
+    if (quad_ibo_enabled()
+        && first >= 0 && (first & 3) == 0
+        && count > 0 && (count & 3) == 0
         && (uint64_t)(uint32_t)first + (uint64_t)(uint32_t)count <= (uint64_t)QUAD_IDX_VERTS
         && quad_ibo_ready()) {
         // fpe_glDrawElements recognises pointers inside quad_idx and draws them from the element buffer
@@ -1389,7 +1401,9 @@ void APIENTRY_GL4ES gl4es_glDrawArraysInstanced(GLenum mode, GLint first, GLsize
         free_renderlist(list);
     } else {
         if (mode==GL_QUADS) {
-            if (first >= 0 && (first & 3) == 0
+            if (quad_ibo_enabled()
+                && first >= 0 && (first & 3) == 0
+                && count > 0 && (count & 3) == 0
                 && (uint64_t)(uint32_t)first + (uint64_t)(uint32_t)count <= (uint64_t)QUAD_IDX_VERTS
                 && quad_ibo_ready()) {
                 // Reuse the same static IBO fast path as non-instanced GL_QUADS.
