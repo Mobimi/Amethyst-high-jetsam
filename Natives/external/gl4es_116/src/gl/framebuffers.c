@@ -115,6 +115,7 @@ void APIENTRY_GL4ES gl4es_glGenFramebuffers(GLsizei n, GLuint *ids) {
 }
 
 void APIENTRY_GL4ES gl4es_glDeleteFramebuffers(GLsizei n, GLuint *framebuffers) {
+    if (!glstate || !framebuffers || n <= 0) return;
     DBG(printf("glDeleteFramebuffers(%i, %p), framebuffers[0]=%u\n", n, framebuffers, framebuffers[0]);)
     // delete tracking
     if (glstate->fbo.framebufferlist)
@@ -153,15 +154,12 @@ void APIENTRY_GL4ES gl4es_glDeleteFramebuffers(GLsizei n, GLuint *framebuffers) 
                                 tex->renderstencil = 0;
                             }
                         }
-                        if (glstate->fbo.current_fb == fb) {
-                            glstate->fbo.current_fb = 0;
-                        }
-                        if (glstate->fbo.fbo_read == fb) {
-                            glstate->fbo.fbo_read = 0;
-                        }
-                        if (glstate->fbo.fbo_draw == fb) {
-                            glstate->fbo.fbo_draw = 0;
-                        }
+                        if (glstate->fbo.current_fb && glstate->fbo.current_fb->id == t)
+                            glstate->fbo.current_fb = &glstate->fbo.mainfbo;
+                        if (glstate->fbo.fbo_read && glstate->fbo.fbo_read->id == t)
+                            glstate->fbo.fbo_read = &glstate->fbo.mainfbo;
+                        if (glstate->fbo.fbo_draw && glstate->fbo.fbo_draw->id == t)
+                            glstate->fbo.fbo_draw = &glstate->fbo.mainfbo;
                         free(fb);
                         kh_del(framebufferlist_t, glstate->fbo.framebufferlist, k);                        
                     }
