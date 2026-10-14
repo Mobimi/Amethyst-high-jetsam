@@ -490,6 +490,18 @@ void APIENTRY_GL4ES gl4es_glMultiTexCoord4f(GLenum target, GLfloat s, GLfloat t,
 AliasExport(void,glMultiTexCoord4f,,(GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q));
 AliasExport(void,glMultiTexCoord4f,ARB,(GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q));
 
+void APIENTRY_GL4ES gl4es_glMultiTexCoord2f(GLenum target, GLfloat s, GLfloat t) {
+    gl4es_glMultiTexCoord4f(target, s, t, 0.f, 1.f);
+}
+AliasExport(void,glMultiTexCoord2f,,(GLenum target, GLfloat s, GLfloat t));
+AliasExport(void,glMultiTexCoord2f,ARB,(GLenum target, GLfloat s, GLfloat t));
+
+void APIENTRY_GL4ES gl4es_glMultiTexCoord2s(GLenum target, GLshort s, GLshort t) {
+    gl4es_glMultiTexCoord4f(target, (GLfloat)s, (GLfloat)t, 0.f, 1.f);
+}
+AliasExport(void,glMultiTexCoord2s,,(GLenum target, GLshort s, GLshort t));
+AliasExport(void,glMultiTexCoord2s,ARB,(GLenum target, GLshort s, GLshort t));
+
 void APIENTRY_GL4ES gl4es_glMultiTexCoord2fv(GLenum target, GLfloat* v) {
 	// TODO, error if target is unsuported texture....
     if (glstate->list.active) {
