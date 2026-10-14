@@ -4,6 +4,7 @@
 
 #include "../glx/hardext.h"
 #include "init.h"
+#include "envvars.h"
 #include "logs.h"
 #include "debug.h"
 #include "program.h"
@@ -374,9 +375,20 @@ static void psa_join(void)
 
 // Called regularly from the render thread (cheap when nothing changed): new programs are saved in the
 // background so that a killed app (no clean shutdown on iOS) still keeps its precompiled shaders.
+static int psa_bg_save_enabled(void) {
+    static int v = -1;
+    if (v < 0) {
+        const char *e = GetEnvVar("AMETHYST_GL4ES_PSA_BG_SAVE");
+        v = (e && e[0] == '1') ? 1 : 0;
+    }
+    return v;
+}
+
 void fpe_PSATick()
 {
 #ifdef PSA_BG_SAVE
+    if(!psa_bg_save_enabled())
+        return;
     if(!psa || !PSA_LD(psa->dirty) || PSA_LD(psa->busy))
         return;
     double now = psa_now();

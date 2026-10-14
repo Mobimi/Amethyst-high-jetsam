@@ -115,6 +115,7 @@ void APIENTRY_GL4ES gl4es_glGenFramebuffers(GLsizei n, GLuint *ids) {
 }
 
 void APIENTRY_GL4ES gl4es_glDeleteFramebuffers(GLsizei n, GLuint *framebuffers) {
+    if (!glstate || !framebuffers || n <= 0) return;
     DBG(printf("glDeleteFramebuffers(%i, %p), framebuffers[0]=%u\n", n, framebuffers, framebuffers[0]);)
     // delete tracking
     if (glstate->fbo.framebufferlist)

@@ -141,6 +141,16 @@ void init_applyExperimentalSettings() {
             NSLog(@"[Amethyst Experimental] Enabled LIBGL_NOVAOCACHE=1");
         }
     }
+
+    // GL4ES 1.1.6 gameplay defaults: keep diagnostics/benchmarking out of the
+    // render loop, and enable GL4ES draw batching for small consecutive draws.
+    unsetenv("AMETHYST_RENDER_BENCHMARK");
+    unsetenv("AMETHYST_FPS_LOG");
+    unsetenv("AMETHYST_GL4ES_TEXTURE_TRACE");
+    unsetenv("AMETHYST_GL4ES_SHADER_TRACE");
+    unsetenv("AMETHYST_GL4ES_ERROR_TRACE");
+    setenv("LIBGL_SILENTSTUB", "1", 1);
+
 }
 
 void init_loadCustomEnv() {

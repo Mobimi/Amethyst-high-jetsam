@@ -516,6 +516,11 @@ void initialize_gl4es() {
         globals4es.minbatch = 0;
         break;
     }
+
+    // Amethyst GL4ES 1.1.6 baseline: disable draw-call batching.
+    globals4es.minbatch = 0;
+    globals4es.maxbatch = 0;
+
     if(globals4es.maxbatch==0) {
         SHUT_LOGD("Not trying to batch small subsequent glDrawXXXX\n");
     } else {
@@ -580,6 +585,11 @@ void initialize_gl4es() {
     if(globals4es.fbounbind) {
         SHUT_LOGD("FBO workaround for using binded texture enabled\n");
     }
+
+    // Amethyst default for GL4ES 1.1.6 on ANGLE/iOS:
+    // recycle internal FBOs unless the caller explicitly overrides it.
+    if (!getenv("LIBGL_RECYCLEFBO"))
+        globals4es.recyclefbo = 1;
 
     globals4es.fboforcetex = 1;
     GetEnvVarInt("LIBGL_FBOFORCETEX", &globals4es.fboforcetex, globals4es.fboforcetex);
@@ -665,7 +675,7 @@ void initialize_gl4es() {
     }
     env(LIBGL_GLXNATIVE, globals4es.glxnative, "Don't filter GLXConfig with GLX_X_NATIVE_TYPE");
 #endif
-    char cwd[4096];
+    char cwd[1024];
     if (getcwd(cwd, sizeof(cwd))!= NULL)
         SHUT_LOGD("Current folder is:%s\n", cwd);
 
