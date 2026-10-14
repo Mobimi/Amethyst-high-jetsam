@@ -190,8 +190,17 @@ void APIENTRY_GL4ES gl4es_glBindTexture(GLenum target, GLuint texture) {
         const GLuint itarget = what_target(target);
 
         gltexture_t *bound = glstate->texture.bound[glstate->texture.active][itarget];
-        if (bound && bound->texture == texture)
-            return;
+        if (bound && bound->texture == texture) {
+            // Repair backend state if GL4ES's logical binding matches but the
+            // tracked GLES texture for this TMU does not.
+            const int is_2d_target =
+                target == GL_TEXTURE_1D ||
+                target == GL_TEXTURE_2D ||
+                target == GL_TEXTURE_3D ||
+                target == GL_TEXTURE_RECTANGLE_ARB;
+            if (!is_2d_target || glstate->actual_tex2d[glstate->texture.active] == bound->glname)
+                return;
+        }
 
         tex = gl4es_getTexture(target, texture);
         if (bound == tex)
