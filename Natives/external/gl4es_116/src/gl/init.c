@@ -516,6 +516,11 @@ void initialize_gl4es() {
         globals4es.minbatch = 0;
         break;
     }
+
+    // Amethyst GL4ES 1.1.6 baseline: disable draw-call batching.
+    globals4es.minbatch = 0;
+    globals4es.maxbatch = 0;
+
     if(globals4es.maxbatch==0) {
         SHUT_LOGD("Not trying to batch small subsequent glDrawXXXX\n");
     } else {
