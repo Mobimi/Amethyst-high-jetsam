@@ -154,12 +154,15 @@ void APIENTRY_GL4ES gl4es_glDeleteFramebuffers(GLsizei n, GLuint *framebuffers) 
                                 tex->renderstencil = 0;
                             }
                         }
-                        if (glstate->fbo.current_fb && glstate->fbo.current_fb->id == t)
-                            glstate->fbo.current_fb = glstate->fbo.fbo_0;
-                        if (glstate->fbo.fbo_read && glstate->fbo.fbo_read->id == t)
-                            glstate->fbo.fbo_read = glstate->fbo.fbo_0;
-                        if (glstate->fbo.fbo_draw && glstate->fbo.fbo_draw->id == t)
-                            glstate->fbo.fbo_draw = glstate->fbo.fbo_0;
+                        if (glstate->fbo.current_fb == fb) {
+                            glstate->fbo.current_fb = 0;
+                        }
+                        if (glstate->fbo.fbo_read == fb) {
+                            glstate->fbo.fbo_read = 0;
+                        }
+                        if (glstate->fbo.fbo_draw == fb) {
+                            glstate->fbo.fbo_draw = 0;
+                        }
                         free(fb);
                         kh_del(framebufferlist_t, glstate->fbo.framebufferlist, k);                        
                     }
