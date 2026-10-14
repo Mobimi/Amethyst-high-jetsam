@@ -665,7 +665,31 @@ void initialize_gl4es() {
     }
     env(LIBGL_GLXNATIVE, globals4es.glxnative, "Don't filter GLXConfig with GLX_X_NATIVE_TYPE");
 #endif
-    char cwd[4096];
+    // === [AMETHYST iOS OPTIMIZATION FOR MINECRAFT 1.12.2 / RLCRAFT] ===
+    // 1. Tái sử dụng FBO nội bộ thay vì liên tục tạo/xóa gây tràn RAM (Jetsam) trên iOS ANGLE
+    if (!getenv("LIBGL_RECYCLEFBO")) {
+        globals4es.recyclefbo = 1;
+    }
+    // 2. Gộp các lệnh vẽ nhỏ liên tiếp & tối ưu Display Lists (cực kỳ quan trọng cho 175 mods RLCraft)
+    if (!getenv("LIBGL_MERGELIST")) {
+        globals4es.mergelist = 1;
+    }
+    // 3. Tránh convert BGRA bằng CPU nếu ANGLE đã hỗ trợ GL_EXT_texture_format_BGRA8888
+    if (hardext.bgra8888 && !getenv("LIBGL_NOBGRA")) {
+        globals4es.nobgra = 0;
+    }
+    // 4. Bật tính năng tự động tạo mipmap bằng phần cứng GLES2 thay vì CPU
+    if (!getenv("LIBGL_AUTOMIPMAP")) {
+        globals4es.automipmap = 1; // Hoặc 3 nếu muốn bỏ qua mipmap của block nhỏ để tăng FPS
+    }
+    // 5. Không dùng glBegin/glEnd memory pool quá nhỏ gây cấp phát lại bộ nhớ liên tục
+    if (!getenv("LIBGL_BEGINEND")) {
+        globals4es.beginend = 1;
+    }
+    // ==================================================================
+
+    // ĐOẠN CODE GỐC ĐƯỢC ĐẨY XUỐNG DƯỚI ĐÂY:
+    char cwd[1024];
     if (getcwd(cwd, sizeof(cwd))!= NULL)
         SHUT_LOGD("Current folder is:%s\n", cwd);
 
