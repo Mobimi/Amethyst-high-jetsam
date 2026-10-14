@@ -581,6 +581,11 @@ void initialize_gl4es() {
         SHUT_LOGD("FBO workaround for using binded texture enabled\n");
     }
 
+    // Amethyst default for GL4ES 1.1.6 on ANGLE/iOS:
+    // recycle internal FBOs unless the caller explicitly overrides it.
+    if (!getenv("LIBGL_RECYCLEFBO"))
+        globals4es.recyclefbo = 1;
+
     globals4es.fboforcetex = 1;
     GetEnvVarInt("LIBGL_FBOFORCETEX", &globals4es.fboforcetex, globals4es.fboforcetex);
     if(globals4es.fboforcetex)
