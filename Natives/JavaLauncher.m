@@ -150,7 +150,6 @@ void init_applyExperimentalSettings() {
     unsetenv("AMETHYST_GL4ES_SHADER_TRACE");
     unsetenv("AMETHYST_GL4ES_ERROR_TRACE");
     setenv("LIBGL_SILENTSTUB", "1", 1);
-    setenv("LIBGL_BATCH", "10", 1);
 
 }
 
