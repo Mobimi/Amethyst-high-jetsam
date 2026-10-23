@@ -176,6 +176,7 @@ static inline GLenum map_tex_target(GLenum target) {
     return target;
 }
 gltexture_t* gl4es_getTexture(GLenum target, GLuint texture);
+gltexture_t* gl4es_findTexture(GLenum target, GLuint texture);
 gltexture_t* gl4es_getCurrentTexture(GLenum target);
 
 static inline GLuint what_target(GLenum target) {

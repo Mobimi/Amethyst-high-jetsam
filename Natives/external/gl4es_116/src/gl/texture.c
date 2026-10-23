@@ -1554,7 +1554,7 @@ void APIENTRY_GL4ES gl4es_glTexSubImage2D(GLenum target, GLint level, GLint xoff
     }
     
     gltexture_t *bound = glstate->texture.bound[glstate->texture.active][itarget];
-    if (bound && !bound->valid && width > 0 && height > 0) {
+    if (bound && !bound->valid && bound->width > 0 && bound->height > 0) {
         bound->valid = 1;
         if (glstate->fpe_state && glstate->fpe_bound_changed < glstate->texture.active+1)
             glstate->fpe_bound_changed = glstate->texture.active+1;

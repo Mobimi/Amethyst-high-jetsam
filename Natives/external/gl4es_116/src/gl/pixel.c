@@ -819,10 +819,6 @@ bool pixel_convert(const GLvoid *src, GLvoid **dst,
     // simple BGRA <-> RGBA / UNSIGNED_BYTE 
     if ((((src_format == GL_BGRA) && (dst_format == GL_RGBA)) || ((src_format == GL_RGBA) && (dst_format == GL_BGRA))) 
         && (dst_type == GL_UNSIGNED_BYTE) && ((src_type == GL_UNSIGNED_BYTE))) {
-        // Both formats are 4 bytes/pixel here (src_stride == dst_stride == 4), so each row is a
-        // contiguous run of 32-bit words. Work on a per-row basis with memcpy-based 32-bit
-        // loads/stores (alignment-safe, no strict-aliasing UB) so the compiler can vectorize it.
-        // Read-before-write per element is kept, so exact in-place overlap stays correct.
         for (int i = 0; i < height; i++) {
             const unsigned char *s = (const unsigned char*)src_pos;
             unsigned char *d = (unsigned char*)dst_pos;
@@ -831,10 +827,10 @@ bool pixel_convert(const GLvoid *src, GLvoid **dst,
             for (; j + 16 <= width; j += 16) {
                 uint8x16x4_t pix = vld4q_u8(s + (size_t)j * 4);
                 uint8x16x4_t swizzled;
-                swizzled.val[0] = pix.val[2]; // swap B and R
-                swizzled.val[1] = pix.val[1]; // keep G
-                swizzled.val[2] = pix.val[0]; // swap R and B
-                swizzled.val[3] = pix.val[3]; // keep A
+                swizzled.val[0] = pix.val[2];
+                swizzled.val[1] = pix.val[1];
+                swizzled.val[2] = pix.val[0];
+                swizzled.val[3] = pix.val[3];
                 vst4q_u8(d + (size_t)j * 4, swizzled);
             }
 #endif

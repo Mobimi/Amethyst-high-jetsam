@@ -545,9 +545,6 @@ void DeleteGLState(void* oldstate) {
     if(state->scratch)
         free(state->scratch);
     if(state->quad_ibo) {
-        LOAD_GLES(glDeleteBuffers);
-        if(gles_glDeleteBuffers)
-            gles_glDeleteBuffers(1, &state->quad_ibo);
         state->quad_ibo = 0;
     }
     if(state->quad_idx)

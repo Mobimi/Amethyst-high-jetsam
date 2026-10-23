@@ -16,7 +16,6 @@ int amethyst_in_link_program = 0;
 int amethyst_nested_compiles = 0;
 
 int is_shader_trace_enabled(void) {
-    // resolved once: this is called for every glCompileShader / glLinkProgram
     static int s_shader_trace_enabled = -1;
     if (__builtin_expect(s_shader_trace_enabled == -1, 0)) {
         const char *env = GetEnvVar("AMETHYST_GL4ES_SHADER_TRACE");

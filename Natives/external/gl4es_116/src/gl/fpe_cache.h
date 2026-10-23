@@ -22,7 +22,7 @@ void fpe_InitPSA(const char* name);
 void fpe_FreePSA();
 void fpe_readPSA();
 void fpe_writePSA();
-void fpe_PSATick();     // cheap, call regularly from the render thread
+void fpe_PSATick();
 int fpe_GetProgramPSA(GLuint program, fpe_state_t* state);
 void fpe_AddProgramPSA(GLuint program, fpe_state_t* state);
 

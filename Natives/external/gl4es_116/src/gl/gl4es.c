@@ -1162,16 +1162,12 @@ void APIENTRY_GL4ES gl4es_glClampColor(GLenum target, GLenum clamp)
 }
 AliasExport(void,glClampColor,,(GLenum target, GLenum clamp));
 
-// Capacity to allocate when a scratch buffer must grow from "cur" to hold at least "need" bytes.
-// Growing by the exact request made free()/malloc() (or glBufferData orphaning) repeat every time a slightly
-// larger draw showed up. Grow by >=25% and round up to 64KB: waste is bounded (<=25% + 64KB over the largest
-// request ever seen), buffers never shrink (high-water mark) and the growth steps stop quickly.
 static int scratch_capacity(int cur, int need) {
     long long cap = need;
     long long grown = (long long)cur + ((long long)cur >> 2);
     if(cap < grown) cap = grown;
     cap = (cap + 0xFFFF) & ~0xFFFFLL;
-    if(cap > 0x7FFFFFFFLL) cap = need;  // never overflow int, fall back to the exact request
+    if(cap > 0x7FFFFFFFLL) cap = need;
     return (int)cap;
 }
 
@@ -1179,7 +1175,7 @@ void gl4es_scratch(int alloc) {
     if(glstate->scratch_alloc<alloc) {
         int cap = scratch_capacity(glstate->scratch_alloc, alloc);
         void *n = malloc(cap);
-        if(!n && cap!=alloc) {  // memory pressure: retry with the exact size
+        if(!n && cap!=alloc) {
             cap = alloc;
             n = malloc(cap);
         }

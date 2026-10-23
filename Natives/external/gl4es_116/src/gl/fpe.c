@@ -280,7 +280,6 @@ int APIENTRY_GL4ES fpe_IsEmpty(fpe_state_t *state) {
     return 1;
 }
 
-// cached fpe_ReleventState(glstate->fpe_state): recomputed only if the raw state changed
 static const fpe_state_t* fpe_CachedReleventState(int fixed, int *empty) {
     __typeof__(glstate->fpe_rel[0]) *c = &glstate->fpe_rel[fixed?1:0];
     if(!c->valid || memcmp(&c->in, glstate->fpe_state, sizeof(fpe_state_t))) {
@@ -389,11 +388,20 @@ void APIENTRY_GL4ES fpe_oldprogram(fpe_state_t* state) {
 
 // ********* Shader stuffs handling *********
 void APIENTRY_GL4ES fpe_program(int ispoint) {
+    if(glstate==NULL || glstate->fpe_state==NULL)
+        return;
     glstate->fpe_state->point = ispoint;
     const fpe_state_t *rel = fpe_CachedReleventState(1, NULL);
+    if(glstate->fpe_cache==NULL)
+        glstate->fpe_cache = fpe_NewCache();
+    if(glstate->fpe_cache==NULL)
+        return;
     if(glstate->fpe==NULL || memcmp(&glstate->fpe->state, rel, sizeof(fpe_state_t))) {
         // get cached fpe (or new one)
-        glstate->fpe = fpe_GetCache(glstate->fpe_cache, (fpe_state_t*)rel, 1);
+        fpe_fpe_t *cached = fpe_GetCache(glstate->fpe_cache, (fpe_state_t*)rel, 1);
+        if(cached==NULL)
+            return;
+        glstate->fpe = cached;
     }   
     if(glstate->fpe->glprogram==NULL) {
         fpe_state_t state;
@@ -468,6 +476,7 @@ program_t* APIENTRY_GL4ES fpe_CustomShader(program_t* glprogram, fpe_state_t* st
     // state is not empty and glprogram already has some cache (it may be empty, but kh'thingy is initialized)
     // TODO: what if program is composed of more then 1 vertex or fragment shader?
     fpe_fpe_t *fpe = fpe_GetCache((fpe_cache_t*)glprogram->fpe_cache, state, 0);
+    if(fpe==NULL) return glprogram;
     if(fpe->glprogram==NULL) {
         GLint status;
         fpe->vert = gl4es_glCreateShader(GL_VERTEX_SHADER);
@@ -545,6 +554,7 @@ program_t* APIENTRY_GL4ES fpe_CustomShader_DefaultVertex(program_t* glprogram, f
     // state is not empty and glprogram already has some cache (it may be empty, but kh'thingy is initialized)
     // TODO: what if program is composed of more then 1 vertex or fragment shader?
     fpe_fpe_t *fpe = fpe_GetCache((fpe_cache_t*)glprogram->fpe_cache, state_vertex, 0);
+    if(fpe==NULL) return glprogram;
     if(fpe->glprogram==NULL) {
         GLint status;
         fpe->vert = gl4es_glCreateShader(GL_VERTEX_SHADER);
@@ -838,7 +848,7 @@ void APIENTRY_GL4ES fpe_glDrawElements(GLenum mode, GLsizei count, GLenum type, 
     if(type==GL_UNSIGNED_SHORT && glstate->quad_ibo_state>0
         && (uintptr_t)indices>=(uintptr_t)glstate->quad_idx
         && (uintptr_t)indices<(uintptr_t)(glstate->quad_idx+QUAD_IDX_COUNT)) {
-        // static GL_QUADS index table: draw from its element buffer (the CPU copy is only the offset base)
+        use_vbo = 1;
         bindBuffer(GL_ELEMENT_ARRAY_BUFFER, glstate->quad_ibo);
         indices = (GLvoid*)((uintptr_t)indices - (uintptr_t)glstate->quad_idx);
     } else
@@ -1057,16 +1067,27 @@ void APIENTRY_GL4ES fpe_glAlphaFunc(GLenum func, GLclampf ref) {
 
 // ********* Realize GLES Environnements *********
 
+static int fpe_texture_usable(int TMU, int en)
+{
+    gltexture_t *t = glstate->texture.bound[TMU][en];
+    if(!t)
+        return 0;
+    return t->valid || (t->glname > 0 && t->width > 0);
+}
+
 int fpe_gettexture(int TMU) {
     int state=glstate->enable.texture[TMU];
     int target = -1;
-    #define GO(A) if(IS_##A(state) && (glstate->texture.bound[TMU][ENABLED_##A]->valid || (glstate->texture.bound[TMU][ENABLED_##A]->glname > 0 && glstate->texture.bound[TMU][ENABLED_##A]->width > 0))) target = ENABLED_##A
-    GO(CUBE_MAP);
-    else GO(TEX3D);
-    else GO(TEXTURE_RECTANGLE);
-    else GO(TEX2D);
-    else GO(TEX1D);
-    #undef GO
+    if(IS_CUBE_MAP(state) && fpe_texture_usable(TMU, ENABLED_CUBE_MAP))
+        target = ENABLED_CUBE_MAP;
+    else if(IS_TEX3D(state) && fpe_texture_usable(TMU, ENABLED_TEX3D))
+        target = ENABLED_TEX3D;
+    else if(IS_TEXTURE_RECTANGLE(state) && fpe_texture_usable(TMU, ENABLED_TEXTURE_RECTANGLE))
+        target = ENABLED_TEXTURE_RECTANGLE;
+    else if(IS_TEX2D(state) && fpe_texture_usable(TMU, ENABLED_TEX2D))
+        target = ENABLED_TEX2D;
+    else if(IS_TEX1D(state) && fpe_texture_usable(TMU, ENABLED_TEX1D))
+        target = ENABLED_TEX1D;
     return target;
 }
 
@@ -1164,26 +1185,29 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
         glprogram->texunits[tu_idx].act_tu = glprogram->texunits[tu_idx].req_tu;
         ++tu_idx;
     }
-    if(globals4es.fbounbind && glstate->fbo.current_fb->id) {
+    if(globals4es.fbounbind && glstate->fbo.current_fb && glstate->fbo.current_fb->id) {
         // check if need to unbind/bind fbo because texture is both attached and used
         tu_idx = 0;
         int need = 0;
         gltexture_t * tex = NULL;
         while(tu_idx<MAX_TEX && glprogram->texunits[tu_idx].type && !need) {
             tex = glstate->texture.bound[glprogram->texunits[tu_idx].req_tu][glprogram->texunits[tu_idx].type - 1];
-            if(tex && tex->binded_fbo==glstate->fbo.current_fb->id) {
+            if(tex && glstate->fbo.current_fb && tex->binded_fbo==glstate->fbo.current_fb->id) {
                 DBG(printf("Texture %d is used on Uniform %s (%d) and binded on FBO %d Attachement=%s\n", tex->glname, GetUniformName(glprogram, glprogram->texunits[tu_idx].id), glprogram->texunits[tu_idx].id, glstate->fbo.current_fb->id, PrintEnum(tex->binded_attachment));)
                 need = 1;
             }
             ++tu_idx;
         }
-        if(need && tex) {
+        if(need && tex && glstate->fbo.current_fb) {
             DBG(printf("LIBGL: Need to Bind/Unbind FBO!");)
             LOAD_GLES2_OR_OES(glBindFramebuffer);
             LOAD_GLES2_OR_OES(glFramebufferTexture2D);
             //gles_glFramebufferTexture2D(GL_FRAMEBUFFER, tex->binded_attachment, GL_TEXTURE_2D, 0, 0);
+            GLuint fbo = glstate->fbo.current_fb->id;
+            if(!fbo)
+                fbo = glstate->fbo.mainfbo_fbo;
             gles_glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            gles_glBindFramebuffer(GL_FRAMEBUFFER, glstate->fbo.current_fb->id);
+            gles_glBindFramebuffer(GL_FRAMEBUFFER, fbo);
             //gles_glFramebufferTexture2D(GL_FRAMEBUFFER, tex->binded_attachment, GL_TEXTURE_2D, tex->glname, 0);
         }
     }
@@ -1514,7 +1538,7 @@ void realize_glenv(int ispoint, int first, int count, GLenum type, const void* i
                             if(glstate->color_scratch[sidx] && glstate->color_scratch_cap[sidx] >= needed) {
                                 scratch_buf = glstate->color_scratch[sidx];
                                 copy_gl_pointer_color_bgra_noalloc(scratch_buf, ptr, w->stride, 4, imin, imax);
-                                scratch->scratch[scratch->size++] = NULL; // managed by glstate
+                                scratch->scratch[scratch->size++] = NULL;
                             }
                         }
                         if(!scratch_buf) {

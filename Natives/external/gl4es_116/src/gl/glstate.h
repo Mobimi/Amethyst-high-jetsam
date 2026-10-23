@@ -9,7 +9,7 @@
 #include "stack.h"
 #include "stencil.h"
 
-#define QUAD_IDX_VERTS  65536   // 16-bit index range
+#define QUAD_IDX_VERTS  65536
 #define QUAD_IDX_COUNT  (QUAD_IDX_VERTS/4*6)
 
 typedef struct glstate_s {
@@ -89,7 +89,7 @@ typedef struct glstate_s {
     struct {
         fpe_state_t in, out;
         int         valid, empty;
-    }                   fpe_rel[2];     // cache of fpe_ReleventState result, indexed by "fixed"
+    }                   fpe_rel[2];
     gleshard_t          *gleshard;          //shared
     glesblit_t          *blit;
     fbo_t               fbo;
@@ -116,11 +116,9 @@ typedef struct glstate_s {
     GLsizei             scratch_vertex_size;
     GLuint              scratch_indices;
     GLsizei             scratch_indices_size;
-    // static GL_QUADS -> triangles index table (0,1,2,0,2,3,...), mirrored in a GLES element buffer
     GLushort*           quad_idx;
     GLuint              quad_ibo;
-    int                 quad_ibo_state;     // 0: not tried, 1: ready, -1: unavailable (use client indices)
-    // persistent color conversion scratch buffer for realize_glenv (eliminates per-draw malloc/free)
+    int                 quad_ibo_state;
     void*               color_scratch[4];
     size_t              color_scratch_cap[4];
     // Implementation read

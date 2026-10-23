@@ -48,6 +48,11 @@ glframebuffer_t* get_framebuffer(GLenum target) {
 
 
 void readfboBegin() {
+    if(!glstate->fbo.fbo_read) glstate->fbo.fbo_read = glstate->fbo.fbo_0;
+    if(!glstate->fbo.fbo_draw) glstate->fbo.fbo_draw = glstate->fbo.fbo_0;
+    if(!glstate->fbo.current_fb) glstate->fbo.current_fb = glstate->fbo.fbo_0;
+    if(!glstate->fbo.fbo_read || !glstate->fbo.fbo_draw)
+        return;
 	if (glstate->fbo.fbo_read == glstate->fbo.fbo_draw)
         return;
     DBG(printf("readfboBegin, fbo status read=%u, draw=%u, main=%u, current=%u\n", glstate->fbo.fbo_read->id, glstate->fbo.fbo_draw->id, glstate->fbo.mainfbo_fbo, glstate->fbo.current_fb->id);)
@@ -62,6 +67,11 @@ void readfboBegin() {
 }
 
 void readfboEnd() {
+    if(!glstate->fbo.fbo_read) glstate->fbo.fbo_read = glstate->fbo.fbo_0;
+    if(!glstate->fbo.fbo_draw) glstate->fbo.fbo_draw = glstate->fbo.fbo_0;
+    if(!glstate->fbo.current_fb) glstate->fbo.current_fb = glstate->fbo.fbo_0;
+    if(!glstate->fbo.fbo_read || !glstate->fbo.fbo_draw)
+        return;
 	if (glstate->fbo.fbo_read->id == glstate->fbo.fbo_draw->id)
         return;
     DBG(printf("readfboEnd, fbo status read=%p, draw=%p, main=%u, current=%p\n", glstate->fbo.fbo_read, glstate->fbo.fbo_draw, glstate->fbo.mainfbo_fbo, glstate->fbo.current_fb);)
@@ -115,78 +125,111 @@ void APIENTRY_GL4ES gl4es_glGenFramebuffers(GLsizei n, GLuint *ids) {
 }
 
 void APIENTRY_GL4ES gl4es_glDeleteFramebuffers(GLsizei n, GLuint *framebuffers) {
-    DBG(printf("glDeleteFramebuffers(%i, %p), framebuffers[0]=%u\n", n, framebuffers, framebuffers[0]);)
+    DBG(printf("glDeleteFramebuffers(%i, %p)\n", n, framebuffers);)
+    if (n <= 0) {
+        noerrorShim();
+        return;
+    }
+    if (!framebuffers) {
+        errorShim(GL_INVALID_VALUE);
+        return;
+    }
     // delete tracking
+    int rebind = 0;
+    GLuint  todel_stack[16];
+    GLuint *todel = (n <= (GLsizei)(sizeof(todel_stack)/sizeof(todel_stack[0])))
+                  ? todel_stack : (GLuint*)malloc((size_t)n * sizeof(GLuint));
+    GLsizei ntodel = 0;
     if (glstate->fbo.framebufferlist)
         for (int i=0; i<n; i++) {
             khint_t k;
             glframebuffer_t *fb;
-            for (int i = 0; i < n; i++) {
-                GLuint t = framebuffers[i];
-                if(t) {
-                    k = kh_get(framebufferlist_t, glstate->fbo.framebufferlist, t);
-                    if (k != kh_end(glstate->fbo.framebufferlist)) {
-                        fb = kh_value(glstate->fbo.framebufferlist, k);
-                        // detach texture...
-                        for(int j=0; j<MAX_DRAW_BUFFERS; ++j) {
-                            if(fb->color[j] && fb->t_color[j]!=GL_RENDERBUFFER) {
-                                gltexture_t *tex = gl4es_getTexture(fb->t_color[j], fb->color[j]);
-                                if(tex) {
-                                    tex->binded_fbo = 0;
-                                    tex->binded_attachment = 0;
-                                }
-                            }
-                        }
-                        if(fb->depth && fb->t_depth!=GL_RENDERBUFFER) {
-                            gltexture_t *tex = gl4es_getTexture(fb->t_depth, fb->depth);
-                            if(tex) {
-                                tex->binded_fbo = 0;
-                                tex->binded_attachment = 0;
-                                tex->renderdepth = 0;
-                            }
-                        }
-                        if(fb->stencil && fb->t_stencil!=GL_RENDERBUFFER) {
-                            gltexture_t *tex = gl4es_getTexture(fb->t_stencil, fb->stencil);
-                            if(tex) {
-                                tex->binded_fbo = 0;
-                                tex->binded_attachment = 0;
-                                tex->renderstencil = 0;
-                            }
-                        }
-                        if (glstate->fbo.current_fb == fb) {
-                            glstate->fbo.current_fb = 0;
-                        }
-                        if (glstate->fbo.fbo_read == fb) {
-                            glstate->fbo.fbo_read = 0;
-                        }
-                        if (glstate->fbo.fbo_draw == fb) {
-                            glstate->fbo.fbo_draw = 0;
-                        }
-                        free(fb);
-                        kh_del(framebufferlist_t, glstate->fbo.framebufferlist, k);                        
+            GLuint t = framebuffers[i];
+            if(!t)
+                continue;
+            k = kh_get(framebufferlist_t, glstate->fbo.framebufferlist, t);
+            if (k == kh_end(glstate->fbo.framebufferlist))
+                continue;
+            fb = kh_value(glstate->fbo.framebufferlist, k);
+            if (todel)
+                todel[ntodel++] = t;
+            // detach texture...
+            for(int j=0; j<MAX_DRAW_BUFFERS; ++j) {
+                if(fb->color[j] && fb->t_color[j]!=GL_RENDERBUFFER) {
+                    gltexture_t *tex = gl4es_findTexture(fb->t_color[j], fb->color[j]);
+                    if(tex) {
+                        tex->binded_fbo = 0;
+                        tex->binded_attachment = 0;
                     }
                 }
             }
+            if(fb->depth && fb->t_depth!=GL_RENDERBUFFER) {
+                gltexture_t *tex = gl4es_findTexture(fb->t_depth, fb->depth);
+                if(tex) {
+                    tex->binded_fbo = 0;
+                    tex->binded_attachment = 0;
+                    tex->renderdepth = 0;
+                }
+            }
+            if(fb->stencil && fb->t_stencil!=GL_RENDERBUFFER) {
+                gltexture_t *tex = gl4es_findTexture(fb->t_stencil, fb->stencil);
+                if(tex) {
+                    tex->binded_fbo = 0;
+                    tex->binded_attachment = 0;
+                    tex->renderstencil = 0;
+                }
+            }
+            if (glstate->fbo.current_fb == fb) {
+                glstate->fbo.current_fb = glstate->fbo.fbo_0;
+                rebind = 1;
+            }
+            if (glstate->fbo.fbo_read == fb) {
+                glstate->fbo.fbo_read = glstate->fbo.fbo_0;
+                rebind = 1;
+            }
+            if (glstate->fbo.fbo_draw == fb) {
+                glstate->fbo.fbo_draw = glstate->fbo.fbo_0;
+                rebind = 1;
+            }
+            free(fb);
+            kh_del(framebufferlist_t, glstate->fbo.framebufferlist, k);
         }
 
-    if (globals4es.recyclefbo) {
-        DBG(printf("Recycling %i FBOs\n", n);)
+    if(rebind) {
+        LOAD_GLES2_OR_OES(glBindFramebuffer);
+        if(gles_glBindFramebuffer) {
+            GLuint fbo = glstate->fbo.current_fb?glstate->fbo.current_fb->id:0;
+            if(!fbo)
+                fbo = glstate->fbo.mainfbo_fbo;
+            gles_glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        }
+    }
+
+    if (globals4es.recyclefbo && glstate->fbo.old && ntodel) {
+        DBG(printf("Recycling %i FBOs\n", ntodel);)
         noerrorShim();
         if(glstate->fbo.old->cap == 0) {
             glstate->fbo.old->cap = 16;
             glstate->fbo.old->fbos = (GLuint*)malloc(glstate->fbo.old->cap * sizeof(GLuint));
         }
-        if (glstate->fbo.old->nbr+n > glstate->fbo.old->cap) {
-            glstate->fbo.old->cap += n;
+        if (glstate->fbo.old->nbr+ntodel > glstate->fbo.old->cap) {
+            glstate->fbo.old->cap += ntodel;
             glstate->fbo.old->fbos = (GLuint*)realloc(glstate->fbo.old->fbos, glstate->fbo.old->cap *sizeof(GLuint));
         }
-        memcpy(glstate->fbo.old->fbos+glstate->fbo.old->nbr, framebuffers, n*sizeof(GLuint));
-        glstate->fbo.old->nbr += n;
+        if(glstate->fbo.old->fbos) {
+            memcpy(glstate->fbo.old->fbos+glstate->fbo.old->nbr, todel, ntodel*sizeof(GLuint));
+            glstate->fbo.old->nbr += ntodel;
+        }
     } else {
         LOAD_GLES2_OR_OES(glDeleteFramebuffers);
         errorGL();
-        gles_glDeleteFramebuffers(n, framebuffers);
+        if(gles_glDeleteFramebuffers && ntodel)
+            gles_glDeleteFramebuffers(ntodel, todel);
+        else
+            noerrorShim();
     }
+    if (todel && todel != todel_stack)
+        free(todel);
 }
 
 GLboolean APIENTRY_GL4ES gl4es_glIsFramebuffer(GLuint framebuffer) {
@@ -230,9 +273,6 @@ void APIENTRY_GL4ES gl4es_glBindFramebuffer(GLenum target, GLuint framebuffer) {
         return;
     }
 
-    // Redundant bind: this non-default FBO is already current for both draw and read, so GLES already has it
-    // bound (current_fb mirrors the GLES binding). Skip the backend bind and its glGetError round-trip.
-    // The default framebuffer (id 0) is excluded on purpose: it maps to mainfbo_fbo, which can change.
     if (target == GL_FRAMEBUFFER && framebuffer != 0
         && glstate->fbo.current_fb == fb && glstate->fbo.fbo_draw == fb && glstate->fbo.fbo_read == fb) {
         glstate->fbo.internal = 0;
@@ -278,14 +318,17 @@ void APIENTRY_GL4ES gl4es_glBindFramebuffer(GLenum target, GLuint framebuffer) {
 GLenum ReadDraw_Push(GLenum target) {
     if(target==GL_FRAMEBUFFER)
         return GL_FRAMEBUFFER;
+    if(!glstate->fbo.fbo_draw) glstate->fbo.fbo_draw = glstate->fbo.fbo_0;
+    if(!glstate->fbo.fbo_read) glstate->fbo.fbo_read = glstate->fbo.fbo_0;
+    if(!glstate->fbo.current_fb) glstate->fbo.current_fb = glstate->fbo.fbo_0;
     LOAD_GLES2_OR_OES(glBindFramebuffer);
     if(target==GL_DRAW_FRAMEBUFFER) {
-        if(glstate->fbo.current_fb!=glstate->fbo.fbo_draw)
+        if(glstate->fbo.fbo_draw && glstate->fbo.current_fb!=glstate->fbo.fbo_draw)
             gles_glBindFramebuffer(GL_FRAMEBUFFER, (glstate->fbo.fbo_draw->id)?glstate->fbo.fbo_draw->id:glstate->fbo.mainfbo_fbo);
         return GL_FRAMEBUFFER;
     }
     if(target==GL_READ_FRAMEBUFFER) {
-        if(glstate->fbo.current_fb!=glstate->fbo.fbo_read)
+        if(glstate->fbo.fbo_read && glstate->fbo.current_fb!=glstate->fbo.fbo_read)
             gles_glBindFramebuffer(GL_FRAMEBUFFER, (glstate->fbo.fbo_read->id)?glstate->fbo.fbo_read->id:glstate->fbo.mainfbo_fbo);
         return GL_FRAMEBUFFER;
     }
@@ -293,6 +336,9 @@ GLenum ReadDraw_Push(GLenum target) {
 }
 void ReadDraw_Pop(GLenum target) {
     if(target==GL_FRAMEBUFFER)
+        return;
+    if(!glstate->fbo.current_fb) glstate->fbo.current_fb = glstate->fbo.fbo_0;
+    if(!glstate->fbo.current_fb)
         return;
     LOAD_GLES2_OR_OES(glBindFramebuffer);
     if(target==GL_DRAW_FRAMEBUFFER && glstate->fbo.current_fb!=glstate->fbo.fbo_draw) {
@@ -498,7 +544,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                 int oldactive = glstate->texture.active;
                 if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                 gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                GLuint oldtex = bound->glname;
+                GLuint oldtex = bound?bound->glname:0;
                 if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, tex->glname);
                 gles_glTexImage2D(GL_TEXTURE_2D, 0, tex->format, tex->nwidth, tex->nheight, 0, tex->format, tex->type, NULL);
                 if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, oldtex);
@@ -526,7 +572,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                 int oldactive = glstate->texture.active;
                 if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                 gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                GLuint oldtex = bound->glname;
+                GLuint oldtex = bound?bound->glname:0;
                 if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, tex->glname);
                 gles_glTexImage2D(GL_TEXTURE_2D, 0, tex->format, tex->nwidth, tex->nheight, 0, tex->format, tex->type, NULL);
                 if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, oldtex);
@@ -558,7 +604,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
     GLuint old_attachment = GetAttachment(fb, attachment);
     GLuint old_attachment_type = GetAttachmentType(fb, attachment);
     if(old_attachment) {
-        gltexture_t* old = gl4es_getTexture(old_attachment_type, old_attachment);
+        gltexture_t* old = gl4es_findTexture(old_attachment_type, old_attachment);
         if(old) {
             DBG(printf("Detach Texture %d from FBO %d as Attachement %s\n", old->glname, old->binded_fbo, PrintEnum(old->binded_attachment));)
             old->binded_fbo = 0;
@@ -618,7 +664,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                 int oldactive = glstate->texture.active;
                 if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                 gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                GLuint oldtex = bound->glname;
+                GLuint oldtex = bound?bound->glname:0;
                 if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, tex->glname);
                 gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                 gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -660,7 +706,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                     int oldactive = glstate->texture.active;
                     if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                     gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                    GLuint oldtex = bound->glname;
+                    GLuint oldtex = bound?bound->glname:0;
                     int nwidth = tex->nwidth;
                     int nheight = tex->nheight;
                     tex = gl4es_getTexture(textarget, texture);
@@ -683,7 +729,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                     int oldactive = glstate->texture.active;
                     if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                     gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                    GLuint oldtex = bound->glname;
+                    GLuint oldtex = bound?bound->glname:0;
                     if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, tex->glname);
                     gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                     gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -723,7 +769,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                     int oldactive = glstate->texture.active;
                     if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                     gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                    GLuint oldtex = bound->glname;
+                    GLuint oldtex = bound?bound->glname:0;
                     if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, tex->glname);
                     gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                     gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -757,7 +803,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                     int oldactive = glstate->texture.active;
                     if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
                     gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-                    GLuint oldtex = bound->glname;
+                    GLuint oldtex = bound?bound->glname:0;
                     if (oldtex!=tex->glname) gles_glBindTexture(GL_TEXTURE_2D, tex->glname);
                     gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
                     gles_glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -803,7 +849,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferTexture2D(GLenum target, GLenum attachmen
                 scrap_width = twidth;
                 scrap_height = theight;
                 gltexture_t *bound = glstate->texture.bound[glstate->texture.active][ENABLED_TEX2D];
-                GLuint oldtex = bound->glname;
+                GLuint oldtex = bound?bound->glname:0;
                 if (oldtex!=scrap_tex) gles_glBindTexture(GL_TEXTURE_2D, scrap_tex);
                 gles_glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, scrap_width, scrap_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
                 if (oldtex!=scrap_tex) gles_glBindTexture(GL_TEXTURE_2D, oldtex);
@@ -878,7 +924,7 @@ void APIENTRY_GL4ES gl4es_glFramebufferRenderbuffer(GLenum target, GLenum attach
             int oldactive = glstate->texture.active;
             if(oldactive) gl4es_glActiveTexture(GL_TEXTURE0);
             gltexture_t *bound = glstate->texture.bound[0][ENABLED_TEX2D];
-            GLuint oldtex = bound->glname;
+            GLuint oldtex = bound?bound->glname:0;
             // get size of renderbuffer
             GLenum format = rend->format;
             GLint width = rend->width;
@@ -948,34 +994,51 @@ void APIENTRY_GL4ES gl4es_glFramebufferRenderbuffer(GLenum target, GLenum attach
 
 void APIENTRY_GL4ES gl4es_glDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers) {
     DBG(printf("glDeleteRenderbuffer(%d, %p)\n", n, renderbuffers);)
+    if(n<=0) {
+        noerrorShim();
+        return;
+    }
     LOAD_GLES2_OR_OES(glDeleteRenderbuffers);
+    if(!renderbuffers) {
+        errorShim(GL_INVALID_VALUE);
+        return;
+    }
     
+    GLuint  todel_stack[16];
+    GLuint *todel = (n <= (GLsizei)(sizeof(todel_stack)/sizeof(todel_stack[0])))
+                  ? todel_stack : (GLuint*)malloc((size_t)n * sizeof(GLuint));
+    GLsizei ntodel = 0;
     // check if we delete a depthstencil
     if (glstate->fbo.renderbufferlist)
-        for (int i=0; i<n; i++) {
+        for (int i = 0; i < n; i++) {
             khint_t k;
             glrenderbuffer_t *rend;
-            for (int i = 0; i < n; i++) {
-                GLuint t = renderbuffers[i];
-                if(t) {
-                    k = kh_get(renderbufferlist_t, glstate->fbo.renderbufferlist, t);
-                    if (k != kh_end(glstate->fbo.renderbufferlist)) {
-                        rend = kh_value(glstate->fbo.renderbufferlist, k);
-                        if(glstate->fbo.current_rb == rend)
-                            glstate->fbo.current_rb = glstate->fbo.default_rb;
-                        if(rend->secondarybuffer)
-                            gles_glDeleteRenderbuffers(1, &rend->secondarybuffer);
-                        if(rend->secondarytexture)
-                            gl4es_glDeleteTextures(1, &rend->secondarytexture);
-                        free(rend);
-                        kh_del(renderbufferlist_t, glstate->fbo.renderbufferlist, k);
-                    }
-                }
-            }
+            GLuint t = renderbuffers[i];
+            if(!t)
+                continue;
+            k = kh_get(renderbufferlist_t, glstate->fbo.renderbufferlist, t);
+            if (k == kh_end(glstate->fbo.renderbufferlist))
+                continue;
+            rend = kh_value(glstate->fbo.renderbufferlist, k);
+            if(todel)
+                todel[ntodel++] = t;
+            if(glstate->fbo.current_rb == rend)
+                glstate->fbo.current_rb = glstate->fbo.default_rb;
+            if(rend->secondarybuffer)
+                gles_glDeleteRenderbuffers(1, &rend->secondarybuffer);
+            if(rend->secondarytexture)
+                gl4es_glDeleteTextures(1, &rend->secondarytexture);
+            free(rend);
+            kh_del(renderbufferlist_t, glstate->fbo.renderbufferlist, k);
         }
 
     errorGL();
-    gles_glDeleteRenderbuffers(n, renderbuffers);
+    if(gles_glDeleteRenderbuffers && ntodel)
+        gles_glDeleteRenderbuffers(ntodel, todel);
+    else
+        noerrorShim();
+    if (todel && todel != todel_stack)
+        free(todel);
 }
 
 void APIENTRY_GL4ES gl4es_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
@@ -1049,7 +1112,7 @@ void APIENTRY_GL4ES gl4es_glRenderbufferStorage(GLenum target, GLenum internalfo
         int oldactive = glstate->texture.active;
         if(oldactive) gles_glActiveTexture(GL_TEXTURE0);
         gltexture_t *bound = glstate->texture.bound[0/*glstate->texture.active*/][ENABLED_TEX2D];
-        GLuint oldtex = bound->glname;
+        GLuint oldtex = bound?bound->glname:0;
         if (oldtex!=rend->secondarytexture) gles_glBindTexture(GL_TEXTURE_2D, rend->secondarytexture);
         tex->nwidth = tex->width = width;
         tex->nheight = tex->height = height;

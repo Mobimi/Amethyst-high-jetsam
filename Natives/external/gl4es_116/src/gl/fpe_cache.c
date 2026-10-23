@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../glx/hardext.h"
@@ -19,7 +20,7 @@
 #define PSA_LD(x)    __atomic_load_n(&(x), __ATOMIC_ACQUIRE)
 #define PSA_ST(x,v)  __atomic_store_n(&(x), (v), __ATOMIC_RELEASE)
 #ifndef PSA_SAVE_INTERVAL
-#define PSA_SAVE_INTERVAL 15.0   // seconds between background saves of new programs
+#define PSA_SAVE_INTERVAL 15.0
 #endif
 #endif
 
@@ -32,7 +33,7 @@
 #endif
 
 static const char PSA_SIGN[] = "GL4ES PrecompiledShaderArchive";
-#define CACHE_VERSION 113   // 113: header carries a backend/build identity hash
+#define CACHE_VERSION 113
 
 static kh_inline khint_t _hash_fpe(fpe_state_t *p)
 {
@@ -65,6 +66,10 @@ fpe_cache_t* fpe_NewCache() {
     fpe_cache_t *cache = (fpe_cache_t*)calloc(1, sizeof(fpe_cache_t));
     if (cache) {
         cache->map = kh_init(fpecachelist);
+        if (!cache->map) {
+            free(cache);
+            return NULL;
+        }
     }
     return cache;
 }
@@ -86,13 +91,11 @@ void fpe_disposeCache(fpe_cache_t* cache, int freeprog) {
 }
 
 fpe_fpe_t *fpe_GetCache(fpe_cache_t *cur, fpe_state_t *state, int fixed) {
-    if(!cur || !state) return NULL;
+    if(!cur || !state || !cur->map) return NULL;
 
-    // Fast path: search MRU array first (Minecraft alternates across 4-8 hot shaders)
     for(int i = 0; i < cur->mru_count; ++i) {
         fpe_fpe_t *entry = cur->mru[i];
         if(entry && memcmp(&entry->state, state, sizeof(fpe_state_t)) == 0) {
-            // Hit! Move to front if not already at MRU head
             if(i > 0) {
                 for(int j = i; j > 0; --j) {
                     cur->mru[j] = cur->mru[j-1];
@@ -103,7 +106,6 @@ fpe_fpe_t *fpe_GetCache(fpe_cache_t *cur, fpe_state_t *state, int fixed) {
         }
     }
 
-    // Cache miss in MRU: query the hash map
     khint_t k = kh_get(fpecachelist, cur->map, state);
     fpe_fpe_t *result = NULL;
     if(k != kh_end(cur->map)) {
@@ -117,7 +119,6 @@ fpe_fpe_t *fpe_GetCache(fpe_cache_t *cur, fpe_state_t *state, int fixed) {
         kh_value(cur->map, k) = result;
     }
 
-    // Insert into MRU head
     int shift_limit = (cur->mru_count < FPE_MRU_SIZE) ? cur->mru_count : (FPE_MRU_SIZE - 1);
     for(int j = shift_limit; j > 0; --j) {
         cur->mru[j] = cur->mru[j-1];
@@ -135,7 +136,7 @@ typedef struct psa_s {
     GLenum      format;
     int         size;
     void*       prog;
-    struct psa_s *dead_next;    // replaced entry kept alive until the background writer is done
+    struct psa_s *dead_next;
 } psa_t;
 
 KHASH_MAP_INIT_FPE(psalist, psa_t *);
@@ -146,7 +147,7 @@ typedef struct gl4es_psa_s {
     int             dirty;
     kh_psalist_t*   cache;    
 #ifdef PSA_BG_SAVE
-    volatile int    busy;       // background writer running
+    volatile int    busy;
     int             thread_valid;
     pthread_t       thread;
     double          last_save;
@@ -157,13 +158,9 @@ typedef struct gl4es_psa_s {
 static gl4es_psa_t *psa = NULL;
 static char *psa_name = NULL;
 
-// Sanity limits for archive contents (a corrupt/foreign file must never trigger huge allocations)
 #define PSA_MAX_ENTRIES     65536
 #define PSA_MAX_PROG_SIZE   (8*1024*1024)
 
-// Identity of the driver + generator the archive was produced with. Program binaries are only valid for the
-// exact GLES implementation (on iOS: the ANGLE/Metal build and device) and for the exact shader generator that
-// produced the source, so an archive written by a different one must be ignored, never loaded.
 static uint64_t psa_fnv(uint64_t h, const char* s)
 {
     if(!s) s = "";
@@ -181,7 +178,7 @@ static uint64_t psa_identity(void)
     const char *renderer = (const char*)gles_glGetString(GL_RENDERER);
     const char *version = (const char*)gles_glGetString(GL_VERSION);
     if(!vendor && !renderer && !version)
-        return 0;   // cannot identify the backend: do not use the archive at all
+        return 0;
     char tmp[64];
     snprintf(tmp, sizeof(tmp), "es%d/bin%d/%zu", hardext.esversion, hardext.prgbin_n, sizeof(fpe_state_t));
     uint64_t h = 1469598103934665603ULL;
@@ -199,7 +196,7 @@ static uint64_t psa_id = 0;
 
 void fpe_readPSA()
 {
-    if(!psa || !psa_name)
+    if(!psa || !psa_name || !psa->cache)
         return;
     FILE *f = fopen(psa_name, "rb");
     if(!f)
@@ -235,7 +232,7 @@ void fpe_readPSA()
     if(fread(&id, sizeof(id), 1, f)!=1 || id!=psa_id) {
         fclose(f);
         SHUT_LOGD("Ignoring PSA: written by a different GLES backend / GL4ES build\n");
-        return; // binaries are not portable between drivers/builds
+        return;
     }
     int n = 0;
     if(fread(&n, sizeof(n), 1, f)!=1 || n<0 || n>PSA_MAX_ENTRIES) {
@@ -251,7 +248,7 @@ void fpe_readPSA()
         || fread(&p->size, sizeof(p->size), 1, f)!=1
         || p->size<=0 || p->size>PSA_MAX_PROG_SIZE) {
             free(p);
-            break;  // truncated or corrupt: keep what was loaded so far
+            break;
         }
         p->prog = malloc(p->size);
         if(!p->prog || fread(p->prog, p->size, 1, f)!=1) {
@@ -261,7 +258,7 @@ void fpe_readPSA()
         }
         int ret;
         khint_t k = kh_put(psalist, psa->cache, &p->state, &ret);
-        if(!ret) {  // duplicate state in the file: keep the first one, don't leak
+        if(!ret) {
             free(p->prog);
             free(p);
             continue;
@@ -273,8 +270,6 @@ void fpe_readPSA()
     SHUT_LOGD("Loaded a PSA with %d Precompiled Programs\n", psa->size);
 }
 
-// Writes the given entries to a temporary file then renames it: if the app is killed mid-write (common on iOS)
-// the previous archive stays intact instead of being left truncated.
 static int psa_write_file(psa_t* const* list, int count)
 {
     size_t nlen = strlen(psa_name);
@@ -304,17 +299,19 @@ static int psa_write_file(psa_t* const* list, int count)
     }
     ok = (fclose(f)==0) && ok;
     ok = ok && rename(tmpname, psa_name)==0;
-    if(ok)
+    if(ok) {
         SHUT_LOGD("Saved a PSA with %d Precompiled Programs\n", count);
-    else
+    } else {
         remove(tmpname);
+    }
     free(tmpname);
     return ok;
 }
 
-// entries of the cache as a plain array (caller frees)
 static psa_t** psa_snapshot(int *count)
 {
+    if(!psa || !psa->cache || !count)
+        return NULL;
     int n = (int)kh_size(psa->cache);
     psa_t **list = (psa_t**)malloc((n?n:1)*sizeof(psa_t*));
     if(!list)
@@ -349,7 +346,7 @@ static void* psa_writer(void *arg)
     free(job);
     pthread_mutex_lock(&psa_lock);
     if(!ok)
-        PSA_ST(psa->dirty, 1);     // retry on a later tick
+        PSA_ST(psa->dirty, 1);
     psa_t *d = psa->dead;
     psa->dead = NULL;
     PSA_ST(psa->busy, 0);
@@ -372,8 +369,6 @@ static void psa_join(void)
 }
 #endif
 
-// Called regularly from the render thread (cheap when nothing changed): new programs are saved in the
-// background so that a killed app (no clean shutdown on iOS) still keeps its precompiled shaders.
 void fpe_PSATick()
 {
 #ifdef PSA_BG_SAVE
@@ -383,7 +378,7 @@ void fpe_PSATick()
     if(now - psa->last_save < PSA_SAVE_INTERVAL)
         return;
     psa->last_save = now;
-    psa_join();     // previous writer finished (busy==0): reap it
+    psa_join();
     psa_job_t *job = (psa_job_t*)malloc(sizeof(psa_job_t));
     if(!job)
         return;
@@ -438,8 +433,21 @@ void fpe_InitPSA(const char* name)
         return;
     }
     psa = (gl4es_psa_t*)calloc(1, sizeof(gl4es_psa_t));
+    if(!psa)
+        return;
     psa->cache = kh_init(psalist);
-    psa_name = strdup(name);
+    if(!psa->cache) {
+        free(psa);
+        psa = NULL;
+        return;
+    }
+    psa_name = name?strdup(name):NULL;
+    if(!psa_name) {
+        kh_destroy(psalist, psa->cache);
+        free(psa);
+        psa = NULL;
+        return;
+    }
 #ifdef PSA_BG_SAVE
     psa->last_save = psa_now();
 #endif
@@ -454,11 +462,24 @@ void fpe_FreePSA()
         return; // nothing to init
     
     psa_t *m;
-    kh_foreach_value(psa->cache, m, 
-        free(m->prog);
-        free(m);
-    )
-    kh_destroy(psalist, psa->cache);
+    if(psa->cache) {
+        kh_foreach_value(psa->cache, m, 
+            free(m->prog);
+            free(m);
+        )
+        kh_destroy(psalist, psa->cache);
+    }
+#ifdef PSA_BG_SAVE
+    {
+        psa_t *d = psa->dead;
+        while(d) {
+            psa_t *n = d->dead_next;
+            free(d->prog);
+            free(d);
+            d = n;
+        }
+    }
+#endif
 
     free(psa);
     psa = NULL;
@@ -468,7 +489,7 @@ void fpe_FreePSA()
 
 int fpe_GetProgramPSA(GLuint program, fpe_state_t* state)
 {
-    if(!psa)
+    if(!psa || !psa->cache)
         return 0;
     // if state contains custom vertex of fragment shader, then ignore
     if(state->vertex_prg_enable || state->fragment_prg_enable)
@@ -483,7 +504,7 @@ int fpe_GetProgramPSA(GLuint program, fpe_state_t* state)
 
 void fpe_AddProgramPSA(GLuint program, fpe_state_t* state)
 {
-    if(!psa)
+    if(!psa || !psa->cache)
         return;
     // if state contains custom vertex of fragment shader, then ignore
     if(state->vertex_prg_enable || state->fragment_prg_enable)
@@ -506,10 +527,9 @@ void fpe_AddProgramPSA(GLuint program, fpe_state_t* state)
     int ret;
     khint_t k = kh_put(psalist, psa->cache, &p->state, &ret);
     if(!ret) {
-        // replace the existing entry (the old key points inside the old entry: update it too)
         psa_t *p2 = kh_value(psa->cache, k);
 #ifdef PSA_BG_SAVE
-        if(PSA_LD(psa->busy)) {     // the background writer may still read it: freed when it is done
+        if(PSA_LD(psa->busy)) {
             p2->dead_next = psa->dead;
             psa->dead = p2;
             p2 = NULL;

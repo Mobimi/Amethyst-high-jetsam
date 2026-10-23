@@ -13,7 +13,6 @@ const char* hasBuiltinAttrib(const char* vertexShader, int Att);
 const char* builtinAttribGLName(const char* name);
 const char* builtinAttribInternalName(const char* name);
 
-// identifies the build of the shader converter (used to invalidate the PSA)
 const char* shaderconv_build_stamp(void);
 
 #endif // _GL4ES_SHADERCONV_H_
