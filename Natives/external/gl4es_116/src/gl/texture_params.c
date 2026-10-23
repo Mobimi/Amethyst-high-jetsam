@@ -145,6 +145,9 @@ gltexture_t* gl4es_getTexture(GLenum target, GLuint texture) {
     int ret;
     khint_t k;
     khash_t(tex) *list = glstate->texture.list;
+    if (!list) {
+        return glstate->texture.zero;
+    }
     k = kh_get(tex, list, texture);
     
     if (k == kh_end(list)){
@@ -176,6 +179,14 @@ gltexture_t* gl4es_getTexture(GLenum target, GLuint texture) {
         tex = kh_value(list, k);
     }
     return tex;
+}
+gltexture_t* gl4es_findTexture(GLenum target, GLuint texture) {
+    (void)target;
+    if (texture == 0) return glstate?(glstate->texture.zero):NULL;
+    khash_t(tex) *list = glstate?glstate->texture.list:NULL;
+    if (!list) return NULL;
+    khint_t k = kh_get(tex, list, texture);
+    return (k == kh_end(list)) ? NULL : kh_value(list, k);
 }
 void APIENTRY_GL4ES gl4es_glBindTexture(GLenum target, GLuint texture) {
     noerrorShim();
@@ -213,8 +224,13 @@ void APIENTRY_GL4ES gl4es_glBindTexture(GLenum target, GLuint texture) {
             case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
             case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
             case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+                if (glstate->bound_changed < glstate->texture.active+1)
+                    glstate->bound_changed = glstate->texture.active+1;
+                if (glstate->fpe_state && glstate->fpe_bound_changed < glstate->texture.active+1)
+                    glstate->fpe_bound_changed = glstate->texture.active+1;
                 realize_active();
                 gles_glBindTexture(GL_TEXTURE_CUBE_MAP, tex?tex->glname:0);
+                glstate->actual_tex2d[glstate->texture.active] = 0;
                 break;
             case GL_TEXTURE_1D:
             case GL_TEXTURE_2D:
@@ -311,7 +327,9 @@ void APIENTRY_GL4ES gl4es_glTexParameterfv(GLenum target, GLenum pname, const GL
     }
     noerrorShim();
     const GLint itarget = what_target(target);
-    const GLuint rtarget = map_tex_target(target);
+    GLuint rtarget = map_tex_target(target);
+    if (rtarget >= GL_TEXTURE_CUBE_MAP_POSITIVE_X && rtarget <= GL_TEXTURE_CUBE_MAP_NEGATIVE_Z)
+        rtarget = GL_TEXTURE_CUBE_MAP;
     gltexture_t *texture = glstate->texture.bound[glstate->texture.active][itarget];
     if(!samplerParameterfv(&texture->sampler, pname, params)) {
         LOAD_GLES(glTexParameterfv);
@@ -326,9 +344,6 @@ void APIENTRY_GL4ES gl4es_glTexParameterfv(GLenum target, GLenum pname, const GL
                 return;			// not on GLES
             case GL_TEXTURE_LOD_BIAS:
                 return;			// not on GLES
-            // Desktop-GL-only parameters without a GLES equivalent. Desktop GL accepts them, but forwarding
-            // them makes the GLES backend raise GL_INVALID_ENUM, which the app then reads back as a spurious
-            // error ("GL ERROR @ Post render"). Accept them silently, like LOD_BIAS above.
             case GL_TEXTURE_PRIORITY:
             case GL_DEPTH_TEXTURE_MODE:
                 return;
@@ -736,7 +751,7 @@ void realize_bound(int TMU, GLenum target) {
     realize_active();
     LOAD_GLES(glBindTexture);
     gltexture_t *tex = glstate->texture.bound[TMU][what_target(target)];
-    GLuint t = tex->glname;
+    GLuint t = tex?tex->glname:0;
     DBG(printf("realize_bound(%d, %s), glsate->actual_tex2d[%d]=%u / %u\n", TMU, PrintEnum(target), TMU, glstate->actual_tex2d[TMU], t);)
 #ifdef TEXSTREAM
     LOAD_GLES(glEnable);
@@ -754,7 +769,7 @@ void realize_bound(int TMU, GLenum target) {
                 DeactivateStreaming();
                 glstate->bound_stream[TMU] = 0;
             }
-            int streamingID = tex->streamingID;
+            int streamingID = tex?tex->streamingID:-1;
             if (globals4es.texstream && (streamingID>-1)) {
                 if(hardext.esversion<2) gles_glDisable(GL_TEXTURE_2D);
                 ActivateStreaming(streamingID);
@@ -774,6 +789,25 @@ void realize_bound(int TMU, GLenum target) {
                     glstate->bound_changed = TMU+1;
             }
             break;
+        case GL_TEXTURE_CUBE_MAP:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        {
+            if(glstate->gleshard->active!=TMU) {
+                glstate->gleshard->active = TMU;
+                LOAD_GLES(glActiveTexture);
+                gles_glActiveTexture(GL_TEXTURE0+TMU);
+            }
+            gles_glBindTexture(GL_TEXTURE_CUBE_MAP, t);
+            glstate->actual_tex2d[TMU] = 0;
+            if (glstate->bound_changed < TMU+1)
+                glstate->bound_changed = TMU+1;
+            break;
+        }
     }
     // all done
     if (glstate->fpe_state && glstate->fpe_bound_changed < TMU+1)
@@ -895,7 +929,9 @@ void realize_textures(int drawing) {
         // get highest priority texture unit
         int tmp = glstate->enable.texture[i];
         int tgt = ENABLED_TEX2D; // default to TEX2D
-        if(IS_TEX3D(tmp))
+        if(IS_CUBE_MAP(tmp))
+            tgt = ENABLED_CUBE_MAP;
+        else if(IS_TEX3D(tmp))
             tgt = ENABLED_TEX3D;
         else if(IS_TEXTURE_RECTANGLE(tmp))
             tgt = ENABLED_TEXTURE_RECTANGLE;
@@ -903,15 +939,20 @@ void realize_textures(int drawing) {
             tgt = ENABLED_TEX2D;
         else if(IS_TEX1D(tmp))
             tgt = ENABLED_TEX1D;
-        else if(IS_CUBE_MAP(tmp))
-            tgt = ENABLED_CUBE_MAP;
 
         GLenum target = map_tex_target(to_target(tgt));
         gltexture_t *tex = glstate->texture.bound[i][tgt];
         GLuint t = tex ? tex->glname : 0;
         GLuint pre_actual = (i >= 0 && i < MAX_TEX && glstate->actual_tex2d) ? glstate->actual_tex2d[i] : 0;
 
-        if(tgt!=ENABLED_CUBE_MAP) {// CUBE MAP are immediatly bound
+        if(tgt==ENABLED_CUBE_MAP) {
+            if(glstate->gleshard->active!=i) {
+                glstate->gleshard->active = i;
+                gles_glActiveTexture(GL_TEXTURE0+i);
+            }
+            gles_glBindTexture(GL_TEXTURE_CUBE_MAP, t);
+            glstate->actual_tex2d[i] = 0;
+        } else {
 #ifdef TEXSTREAM
             if(glstate->bound_stream[i]) {
                 realize_active();
