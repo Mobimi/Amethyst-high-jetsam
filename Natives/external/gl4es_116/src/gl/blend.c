@@ -110,10 +110,6 @@ void APIENTRY_GL4ES gl4es_glBlendFuncSeparate(GLenum sfactorRGB, GLenum dfactorR
     #ifndef PANDORA
         if(gles_glBlendFuncSeparate==NULL) {
             // some fallback function to have better rendering with SDL2, better then nothing...
-            // Every branch now ends in a real glBlendFunc (the last one approximates with the RGB factors).
-            // Previously an unmatched combination sent nothing to GLES but still updated the cache below,
-            // so later identical calls were skipped as "no change" while GLES kept stale state.
-            // gl4es_glBlendFunc() records the factors it actually sent, so return without overwriting them.
             if(sfactorRGB==GL_SRC_ALPHA && dfactorRGB==GL_ONE_MINUS_SRC_ALPHA && sfactorAlpha==GL_ONE && dfactorAlpha==GL_ONE_MINUS_SRC_ALPHA)
                 gl4es_glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             else if (sfactorRGB==GL_SRC_ALPHA && dfactorRGB==GL_ONE && sfactorAlpha==GL_ZERO && dfactorAlpha==GL_ONE)
@@ -161,8 +157,6 @@ void APIENTRY_GL4ES gl4es_glBlendEquationSeparate(GLenum modeRGB, GLenum modeA) 
         LOAD_GLES2_OR_OES(glBlendEquationSeparate);
         #ifndef PANDORA
         if(!gles_glBlendEquationSeparate) {
-            // no separate equation on this backend: approximate with the RGB mode through glBlendEquation,
-            // which records what it really sent (the cache must never claim state GLES doesn't have)
             gl4es_glBlendEquation(modeRGB);
             return;
         }

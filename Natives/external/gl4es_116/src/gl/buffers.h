@@ -18,7 +18,7 @@ typedef struct {
     GLintptr    offset;
     GLsizeiptr  length;
     GLvoid     *data;
-    GLsizeiptr  cap;    // bytes actually allocated for 'data' (cap >= size when data != NULL)
+    GLsizeiptr  cap;
 } glbuffer_t;
 
 KHASH_MAP_DECLARE_INT(buff, glbuffer_t *);

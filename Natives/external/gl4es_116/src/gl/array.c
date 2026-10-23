@@ -484,7 +484,7 @@ void *copy_gl_array_bgra(void* dest, const void *ptr, GLint stride, GLsizei widt
     int n = count - skip;
     int i = 0;
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if defined(__aarch64__) || defined(_M_ARM64)
     if (stride == 4) {
         const float32x4_t vscale = vdupq_n_f32(1.0f / 255.0f);
         static const uint8_t bgra_to_rgba_tbl[16] = {

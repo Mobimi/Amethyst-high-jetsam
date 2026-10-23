@@ -94,14 +94,6 @@ void rebind_real_buff_arrays(int old_buffer, int new_buffer) {
     }
 }
 
-// Reserve the CPU shadow storage (buff->data) for a buffer that is (re)defined with 'size' bytes.
-// Must be called BEFORE buff->size is updated (it uses the previous logical size).
-// - same size / smaller: allocation is kept (same behaviour as before).
-// - bigger: the previous code always did free()+malloc(). Now the current allocation is
-//   reused when it is already large enough and the unused tail stays small (<= 12.5% + 4KB),
-//   which avoids large malloc/free churn (page faults on iOS) when chunk VBOs are rebuilt
-//   with slightly varying sizes. A reallocation is always sized exactly 'size', so memory use
-//   is never higher than before by more than that bound.
 static void buffer_reserve_shadow(glbuffer_t *buff, GLsizeiptr size)
 {
     if (buff->data && size <= buff->cap
@@ -154,7 +146,19 @@ void APIENTRY_GL4ES gl4es_glBindBuffer(GLenum target, GLuint buffer) {
 		return;
 	}
     glbuffer_t *curr = getbuffer_buffer(target);
-    if ((buffer == 0 && curr == NULL) || (curr && curr->buffer == buffer)) {
+    GLuint raw = 0;
+    int raw_known = 1;
+    if(target==GL_ARRAY_BUFFER)
+        raw = glstate->bind_buffer.array;
+    else if(target==GL_ELEMENT_ARRAY_BUFFER)
+        raw = glstate->bind_buffer.index;
+    else
+        raw_known = 0;
+    if(buffer==0 && curr==NULL && (!raw_known || raw==0)) {
+        noerrorShim();
+        return;
+    }
+    if(curr && curr->buffer == buffer && (!raw_known || raw==curr->real_buffer)) {
         noerrorShim();
         return;
     }
