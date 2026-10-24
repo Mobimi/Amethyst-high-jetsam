@@ -215,11 +215,12 @@ static renderlist_t *arrays_add_renderlist(renderlist_t *a, GLenum mode,
             else
                 copy_gl_pointer_color_noalloc(a->color+a->len*4, &glstate->vao->vertexattrib[ATT_COLOR], 4, skip, count);
         }
-        if (a->secondary)
+        if (a->secondary) {
             if(glstate->vao->vertexattrib[ATT_SECONDARY].size==GL_BGRA)
                 copy_gl_pointer_color_bgra_noalloc(a->secondary+a->len*4, glstate->vao->vertexattrib[ATT_SECONDARY].pointer, glstate->vao->vertexattrib[ATT_SECONDARY].stride, 4, skip, count);
             else
                 copy_gl_pointer_noalloc(a->secondary+a->len*4, &glstate->vao->vertexattrib[ATT_SECONDARY], 4, skip, count);		// alpha chanel is always 0 for secondary...
+        }
         if (a->fogcoord) copy_gl_pointer_raw_noalloc(a->fogcoord+a->len*1, &glstate->vao->vertexattrib[ATT_FOGCOORD], 1, skip, count);
         for (int i=0; i<a->maxtex; i++)
             if (a->tex[i]) copy_gl_pointer_tex_noalloc(a->tex[i]+a->len*4, &glstate->vao->vertexattrib[ATT_MULTITEXCOORD0+i], 4, skip, count);
@@ -451,9 +452,6 @@ if(count>500000) return;
     }
 }
 
-// GL_QUADS drawn from arrays (the dominant draw type of Minecraft: tessellator, GUI, particles, VBO terrain).
-// ES2+ fast path: the quad->triangle index list lives in one static GLES element buffer created once per
-// context, so no index data is generated, copied, scanned or re-uploaded per draw.
 static int quad_ibo_ready(void) {
     if (glstate->quad_ibo_state)
         return glstate->quad_ibo_state > 0;
@@ -470,13 +468,17 @@ static int quad_ibo_ready(void) {
     }
     LOAD_GLES(glGenBuffers);
     LOAD_GLES(glBufferData);
+    if(!gles_glGenBuffers || !gles_glBufferData) {
+        free(tbl);
+        return 0;
+    }
     GLuint ibo = 0;
     gles_glGenBuffers(1, &ibo);
     if (!ibo) {
         free(tbl);
         return 0;
     }
-    GLuint want = glstate->bind_buffer.want_index;  // bindBuffer() overwrites it: keep the caller's wish
+    GLuint want = glstate->bind_buffer.want_index;
     bindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
     gles_glBufferData(GL_ELEMENT_ARRAY_BUFFER, QUAD_IDX_COUNT * sizeof(GLushort), tbl, GL_STATIC_DRAW);
     glstate->bind_buffer.want_index = want;
@@ -487,16 +489,15 @@ static int quad_ibo_ready(void) {
 }
 
 static void draw_quad_arrays(GLint first, GLsizei count) {
-    if (first >= 0 && (first & 3) == 0
+    if (first >= 0 && (first & 3) == 0 && count > 0 && (count & 3) == 0
         && (uint64_t)(uint32_t)first + (uint64_t)(uint32_t)count <= (uint64_t)QUAD_IDX_VERTS
         && quad_ibo_ready()) {
-        // fpe_glDrawElements recognises pointers inside quad_idx and draws them from the element buffer
-        GLuint old_buffer = wantBufferIndex(0);
+        GLuint old_buffer = glstate->bind_buffer.want_index;
+        bindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         glDrawElementsCommon(GL_TRIANGLES, 0, count*3/2, count, glstate->quad_idx + (first*3/2), NULL, 1);
-        wantBufferIndex(old_buffer);
+        bindBuffer(GL_ELEMENT_ARRAY_BUFFER, old_buffer);
         return;
     }
-    // fallback: client side indices (unaligned first, huge arrays, ES1, VBO disabled...)
     static GLushort *indices = NULL;
     static int indcnt = 0;
     static int indfirst = 0;
@@ -507,6 +508,7 @@ static void draw_quad_arrays(GLint first, GLsizei count) {
             indcnt = realcount;
             if (indices) free(indices);
             indices = (GLushort*)malloc(sizeof(GLushort)*(indcnt*3/2));
+            if(!indices) { indcnt = 0; return; }
         }
         indfirst = realfirst;
         GLushort *p = indices;
@@ -514,13 +516,13 @@ static void draw_quad_arrays(GLint first, GLsizei count) {
                 *(p++) = j + 0;
                 *(p++) = j + 1;
                 *(p++) = j + 2;
-
                 *(p++) = j + 0;
                 *(p++) = j + 2;
                 *(p++) = j + 3;
         }
     }
-    GLuint old_buffer = wantBufferIndex(0);
+    GLuint old_buffer = glstate->bind_buffer.want_index;
+    bindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glDrawElementsCommon(GL_TRIANGLES, 0, count*3/2, count, indices+(first-indfirst)*3/2, NULL, 1);
     wantBufferIndex(old_buffer);
 }
@@ -1389,17 +1391,16 @@ void APIENTRY_GL4ES gl4es_glDrawArraysInstanced(GLenum mode, GLint first, GLsize
         free_renderlist(list);
     } else {
         if (mode==GL_QUADS) {
-            if (first >= 0 && (first & 3) == 0
+            if (first >= 0 && (first & 3) == 0 && count > 0 && (count & 3) == 0
                 && (uint64_t)(uint32_t)first + (uint64_t)(uint32_t)count <= (uint64_t)QUAD_IDX_VERTS
                 && quad_ibo_ready()) {
-                // Reuse the same static IBO fast path as non-instanced GL_QUADS.
-                GLuint old_buffer = wantBufferIndex(0);
+                GLuint old_buffer = glstate->bind_buffer.want_index;
+                bindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
                 glDrawElementsCommon(GL_TRIANGLES, 0, count*3/2, count,
                                      glstate->quad_idx + (first*3/2), NULL, primcount);
-                wantBufferIndex(old_buffer);
+                bindBuffer(GL_ELEMENT_ARRAY_BUFFER, old_buffer);
                 return;
             }
-            // Fallback for unaligned/oversized/unsupported GL_QUADS draws.
             static GLushort *indices = NULL;
             static int indcnt = 0;
             static int indfirst = 0;
@@ -1410,6 +1411,7 @@ void APIENTRY_GL4ES gl4es_glDrawArraysInstanced(GLenum mode, GLint first, GLsize
                     indcnt = realcount;
                     if (indices) free(indices);
                     indices = (GLushort*)malloc(sizeof(GLushort)*(indcnt*3/2));
+                    if(!indices) { indcnt = 0; return; }
                 }
                 indfirst = realfirst;
                 GLushort *p = indices;
@@ -1423,7 +1425,8 @@ void APIENTRY_GL4ES gl4es_glDrawArraysInstanced(GLenum mode, GLint first, GLsize
                         *(p++) = j + 3;
                 }
             }
-            GLuint old_buffer = wantBufferIndex(0);
+            GLuint old_buffer = glstate->bind_buffer.want_index;
+            bindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
             glDrawElementsCommon(GL_TRIANGLES, 0, count*3/2, count, indices+(first-indfirst)*3/2, NULL, primcount);
             wantBufferIndex(old_buffer);
             return;

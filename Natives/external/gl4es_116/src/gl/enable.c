@@ -338,19 +338,11 @@ AliasExport(void,glDisableClientState,,(GLenum cap));
 
 
 #define isenabled(what, where) \
-    case what: return glstate->enable.where
+    case what: *value = glstate->enable.where; return 1
 #define clientisenabled(what, where) \
-    case what: return glstate->vao->where
-    
-GLboolean APIENTRY_GL4ES gl4es_glIsEnabled(GLenum cap) {
-    DBG(printf("glIsEnabed(%s), list.begin=%d, list.compiling=%d, list.pending=%d\n", PrintEnum(cap), glstate->list.begin, glstate->list.compiling, glstate->list.pending);)
-    if(glstate->list.begin) {errorShim(GL_INVALID_OPERATION); return GL_FALSE;}
-    if(glstate->list.compiling) {errorShim(GL_INVALID_OPERATION); return GL_FALSE;}
-    // should flush for now... but no need if it's just a pending list...
-    if (glstate->list.active && !glstate->list.pending)
-        gl4es_flush();
-    LOAD_GLES(glIsEnabled);
-    noerrorShim();
+    case what: *value = glstate->vao->where; return 1
+
+int gl4es_getEnableState(GLenum cap, GLboolean *value) {
     switch (cap) {
         isenabled(GL_AUTO_NORMAL, auto_normal);
         isenabled(GL_ALPHA_TEST, alpha_test);
@@ -394,10 +386,10 @@ GLboolean APIENTRY_GL4ES gl4es_glIsEnabled(GLenum cap) {
         isenabled(GL_COLOR_LOGIC_OP, color_logic_op);
         clientisenabled(GL_SECONDARY_COLOR_ARRAY, vertexattrib[ATT_SECONDARY].enabled);
         clientisenabled(GL_FOG_COORD_ARRAY, vertexattrib[ATT_FOGCOORD].enabled);
-        case GL_TEXTURE_1D: return glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_TEX1D);
-        case GL_TEXTURE_2D: return glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_TEX2D);
-        case GL_TEXTURE_3D: return glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_TEX3D);
-        case GL_TEXTURE_CUBE_MAP: return glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_CUBE_MAP);
+        case GL_TEXTURE_1D: *value = (glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_TEX1D))?1:0; return 1;
+        case GL_TEXTURE_2D: *value = (glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_TEX2D))?1:0; return 1;
+        case GL_TEXTURE_3D: *value = (glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_TEX3D))?1:0; return 1;
+        case GL_TEXTURE_CUBE_MAP: *value = (glstate->enable.texture[glstate->texture.active]&(1<<ENABLED_CUBE_MAP))?1:0; return 1;
         clientisenabled(GL_VERTEX_ARRAY, vertexattrib[ATT_VERTEX].enabled);
         clientisenabled(GL_NORMAL_ARRAY, vertexattrib[ATT_NORMAL].enabled);
         clientisenabled(GL_COLOR_ARRAY, vertexattrib[ATT_COLOR].enabled);
@@ -426,10 +418,25 @@ GLboolean APIENTRY_GL4ES gl4es_glIsEnabled(GLenum cap) {
         isenabled(GL_VERTEX_PROGRAM_ARB, vertex_arb);
         isenabled(GL_VERTEX_PROGRAM_TWO_SIDE_ARB, vertex_two_side_arb);
         default:
-			errorGL();
-            return gles_glIsEnabled(cap);
+            return 0;
     }
 }
 #undef isenabled
 #undef clientisenabled
+
+GLboolean APIENTRY_GL4ES gl4es_glIsEnabled(GLenum cap) {
+    DBG(printf("glIsEnabed(%s), list.begin=%d, list.compiling=%d, list.pending=%d\n", PrintEnum(cap), glstate->list.begin, glstate->list.compiling, glstate->list.pending);)
+    if(glstate->list.begin) {errorShim(GL_INVALID_OPERATION); return GL_FALSE;}
+    if(glstate->list.compiling) {errorShim(GL_INVALID_OPERATION); return GL_FALSE;}
+    // should flush for now... but no need if it's just a pending list...
+    if (glstate->list.active && !glstate->list.pending)
+        gl4es_flush();
+    LOAD_GLES(glIsEnabled);
+    noerrorShim();
+    GLboolean value;
+    if (gl4es_getEnableState(cap, &value))
+        return value;
+	errorGL();
+    return gles_glIsEnabled(cap);
+}
 AliasExport(GLboolean,glIsEnabled,,(GLenum cap));

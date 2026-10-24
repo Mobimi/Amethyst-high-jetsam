@@ -9,6 +9,13 @@
 #include "matvec.h"
 #include "texgen.h"
 
+#ifndef GL_BLEND_EQUATION_RGB
+#define GL_BLEND_EQUATION_RGB 0x8009
+#endif
+#ifndef GL_BLEND_EQUATION_ALPHA
+#define GL_BLEND_EQUATION_ALPHA 0x883D
+#endif
+
 //#define DEBUG
 #ifdef DEBUG
 #define DBG(a) a
@@ -626,6 +633,12 @@ int gl4es_commonGet(GLenum pname, GLfloat *params) {
         case GL_BLEND_DST_ALPHA:
             *params=glstate->blenddfactoralpha;
             break;
+        case GL_BLEND_EQUATION_RGB:
+            *params=glstate->blendeqrgb;
+            break;
+        case GL_BLEND_EQUATION_ALPHA:
+            *params=glstate->blendeqalpha;
+            break;
         case GL_MAX_CLIP_PLANES:
             *params=hardext.maxplanes;
             break;
@@ -876,8 +889,15 @@ void APIENTRY_GL4ES gl4es_glGetIntegerv(GLenum pname, GLint *params) {
             params[1] = glstate->depth.Far*2147483647l;
             break;
         default:
+        {
+            GLboolean enabled;
+            if (gl4es_getEnableState(pname, &enabled)) {
+                *params = enabled;
+                break;
+            }
             errorGL();
             gles_glGetIntegerv(pname, params);
+        }
     }
 }
 AliasExport(void,glGetIntegerv,,(GLenum pname, GLint *params));
@@ -943,8 +963,15 @@ void APIENTRY_GL4ES gl4es_glGetFloatv(GLenum pname, GLfloat *params) {
             params[1] = glstate->depth.Far;
             break;
         default:
+        {
+            GLboolean enabled;
+            if (gl4es_getEnableState(pname, &enabled)) {
+                *params = enabled;
+                break;
+            }
             errorGL();
             gles_glGetFloatv(pname, params);
+        }
     }
 }
 AliasExport(void,glGetFloatv,,(GLenum pname, GLfloat *params));
@@ -1025,9 +1052,16 @@ void APIENTRY_GL4ES gl4es_glGetDoublev(GLenum pname, GLdouble *params) {
             params[1] = glstate->depth.Far;
             break;
         default:
+        {
+            GLboolean enabled;
+            if (gl4es_getEnableState(pname, &enabled)) {
+                params[0] = enabled;
+                break;
+            }
             errorGL();
             gles_glGetFloatv(pname, tmp);
             params[0] = tmp[0];
+        }
     }
 }
 AliasExport(void,glGetDoublev,,(GLenum pname, GLdouble *params));

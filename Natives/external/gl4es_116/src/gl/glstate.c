@@ -292,6 +292,8 @@ void* NewGLState(void* shared_glstate, int es2only) {
     glstate->blenddfactorrgb = GL_ZERO;
     glstate->blendsfactoralpha = GL_ONE;
     glstate->blenddfactoralpha = GL_ZERO;
+    glstate->blendeqrgb = GL_FUNC_ADD;
+    glstate->blendeqalpha = GL_FUNC_ADD;
     // Depth
     glstate->depth.func = GL_LESS;
     glstate->depth.mask = GL_TRUE;

@@ -36,6 +36,7 @@ void APIENTRY_GL4ES gl4es_glDisable(GLenum cap);
 void APIENTRY_GL4ES gl4es_glEnableClientState(GLenum cap);
 void APIENTRY_GL4ES gl4es_glDisableClientState(GLenum cap);
 GLboolean APIENTRY_GL4ES gl4es_glIsEnabled(GLenum cap);
+int gl4es_getEnableState(GLenum cap, GLboolean *value);
 void APIENTRY_GL4ES gl4es_glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices);
 void APIENTRY_GL4ES gl4es_glDrawArrays(GLenum mode, GLint first, GLsizei count);
 void APIENTRY_GL4ES gl4es_glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer);
